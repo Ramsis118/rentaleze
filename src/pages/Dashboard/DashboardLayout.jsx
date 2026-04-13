@@ -38,6 +38,8 @@ export default function DashboardLayout() {
         )
     }
 
+    const isVerified = user?.isVerified === 1 && user?.phoneVerified === 1
+
     return (
         <div className="min-h-screen bg-rl-off-white py-10 px-4">
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-8">
@@ -45,6 +47,15 @@ export default function DashboardLayout() {
                 {/* Sidebar */}
                 <aside className="w-full md:w-64 shrink-0">
                     <div className="bg-white rounded-2xl shadow-card p-4 sticky top-24">
+                        {!isVerified && (
+                            <div className="mb-4 bg-orange-50 border border-orange-200 rounded-xl p-3">
+                                <p className="text-xs text-orange-700 font-bold mb-2">Action Required</p>
+                                <p className="text-xs text-orange-600 mb-3">You must complete ID Verification before renting.</p>
+                                <NavLink to="/dashboard/verification" className="block text-center text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg py-2 transition-colors">
+                                    Verify Now
+                                </NavLink>
+                            </div>
+                        )}
                         {/* User Card */}
                         <div className="flex items-center gap-3 mb-6 p-2">
                             {user.avatar ? (
@@ -66,6 +77,11 @@ export default function DashboardLayout() {
                                 to="/dashboard" 
                                 label="Profile Details" 
                                 icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+                            />
+                            <NavItem 
+                                to="/dashboard/verification" 
+                                label="ID Verification" 
+                                icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
                             />
                             <NavItem 
                                 to="/dashboard/messages" 

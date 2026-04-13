@@ -89,6 +89,11 @@ router.post('/login', async (req, res) => {
                 firstName: user.first_name,
                 lastName: user.last_name,
                 avatar: user.avatar,
+                bio: user.bio,
+                phone: user.phone,
+                address: user.address,
+                phone_verified: user.phone_verified,
+                is_verified: user.is_verified,
                 role: user.role
             },
             accessToken,
@@ -142,7 +147,7 @@ router.get('/me', async (req, res) => {
     const decoded = jwt.default.verify(token, process.env.ACCESS_TOKEN_SECRET)
 
     const user = db.prepare(`
-    SELECT id, email, first_name, last_name, avatar, role, is_verified, created_at
+    SELECT id, email, first_name, last_name, avatar, bio, phone, address, role, is_verified, phone_verified, created_at
     FROM users WHERE id = ?
   `).get(decoded.userId)
 
@@ -156,8 +161,12 @@ router.get('/me', async (req, res) => {
         firstName: user.first_name,
         lastName: user.last_name,
         avatar: user.avatar,
+        bio: user.bio,
+        phone: user.phone,
+        address: user.address,
         role: user.role,
         isVerified: user.is_verified,
+        phoneVerified: user.phone_verified,
         createdAt: user.created_at
     })
 })

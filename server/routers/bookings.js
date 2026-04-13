@@ -14,6 +14,12 @@ router.post('/', authenticate, (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' })
         }
 
+        // Check if user is verified
+        const userStatus = db.prepare('SELECT is_verified, phone_verified FROM users WHERE id = ?').get(req.user.id)
+        if (!userStatus.is_verified || !userStatus.phone_verified) {
+            return res.status(403).json({ error: 'You must complete ID and Phone Verification before renting items.' })
+        }
+
         // Get listing price
         const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(listingId)
 

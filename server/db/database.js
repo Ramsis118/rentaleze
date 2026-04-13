@@ -17,6 +17,28 @@ export function initDatabase() {
     const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8')
     db.exec(schema)
     console.log('✅ Database initialized')
+    upgradeDatabase()
+}
+
+// Upgrade schema safely
+function upgradeDatabase() {
+    const columns = [
+        { name: 'bio', type: 'TEXT' },
+        { name: 'phone', type: 'TEXT' },
+        { name: 'address', type: 'TEXT' },
+        { name: 'id_front', type: 'TEXT' },
+        { name: 'id_back', type: 'TEXT' },
+        { name: 'phone_verified', type: 'INTEGER DEFAULT 0' }
+    ]
+
+    for (const col of columns) {
+        try {
+            db.prepare(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`).run()
+        } catch (err) {
+            // Column likely exists
+        }
+    }
+    console.log('✅ Database migrations checked')
 }
 
 // Seed sample data

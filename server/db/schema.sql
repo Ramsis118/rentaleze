@@ -6,8 +6,14 @@ CREATE TABLE IF NOT EXISTS users (
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
   avatar TEXT,
+  bio TEXT,
+  phone TEXT,
+  address TEXT,
+  id_front TEXT,
+  id_back TEXT,
   role TEXT DEFAULT 'renter',
   is_verified INTEGER DEFAULT 0,
+  phone_verified INTEGER DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );

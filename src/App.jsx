@@ -15,6 +15,7 @@ import MessagesPage from './pages/Dashboard/MessagesPage'
 import BookingsPage from './pages/Dashboard/BookingsPage'
 import SavedListingsPage from './pages/Dashboard/SavedListingsPage'
 import PaymentsPage from './pages/Dashboard/PaymentsPage'
+import VerificationPage from './pages/Dashboard/VerificationPage'
 import { useCart } from './context/CartContext'
 import { AuthProvider } from './context/AuthContext'
 
@@ -47,6 +48,7 @@ function AppContent() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<ProfilePage />} />
+            <Route path="verification" element={<VerificationPage />} />
             <Route path="messages" element={<MessagesPage />} />
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="saved" element={<SavedListingsPage />} />

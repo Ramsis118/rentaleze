@@ -45,6 +45,9 @@ app.use('/api/users', usersRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/messages', messagesRoutes)
 
+// Serve avatars publicly
+app.use('/uploads/avatars', express.static(join(process.cwd(), 'uploads', 'avatars')))
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() })

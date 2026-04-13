@@ -10,15 +10,21 @@ export default function ProfilePage() {
     const [form, setForm] = useState({
         firstName: '',
         lastName: '',
-        avatar: ''
+        avatar: '',
+        bio: '',
+        phone: '',
+        address: ''
     })
 
     useEffect(() => {
         if (user) {
             setForm({
-                firstName: user.first_name || '',
-                lastName: user.last_name || '',
-                avatar: user.avatar || ''
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
+                avatar: user.avatar || '',
+                bio: user.bio || '',
+                phone: user.phone || '',
+                address: user.address || ''
             })
         }
     }, [user])
@@ -33,12 +39,31 @@ export default function ProfilePage() {
                 method: 'PUT',
                 body: JSON.stringify(form)
             })
-            // A real app would update the AuthContext here
-            setMessage('Profile updated successfully!')
+            setMessage('Profile updated successfully! Refresh to see changes.')
         } catch (error) {
             setMessage('Failed to update profile.')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleAvatarUpload = async (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+
+        try {
+            const formData = new FormData()
+            formData.append('avatar', file)
+            
+            const res = await api.request('/users/profile/avatar', {
+                method: 'POST',
+                body: formData
+            }, true)
+
+            setForm({...form, avatar: res.avatar})
+            setMessage('Avatar uploaded! Save profile to finalize.')
+        } catch (err) {
+            setMessage('Failed to upload avatar.')
         }
     }
 
@@ -65,14 +90,15 @@ export default function ProfilePage() {
                         )}
                     </div>
                     <div className="flex-1">
-                        <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Avatar URL</label>
-                        <input 
-                            type="text" 
-                            className="input-field" 
-                            placeholder="https://example.com/avatar.jpg"
-                            value={form.avatar}
-                            onChange={e => setForm({...form, avatar: e.target.value})}
-                        />
+                        <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Avatar Image</label>
+                        <div className="flex items-center gap-3">
+                            <label className="btn-outline px-4 py-2 cursor-pointer text-xs">
+                                Upload New Image
+                                <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+                            </label>
+                            {form.avatar && <button type="button" onClick={() => setForm({...form, avatar: ''})} className="text-xs text-red-500 hover:underline">Remove</button>}
+                        </div>
+                        <p className="text-xs text-rl-gray mt-2">JPG, GIF or PNG. Max size of 5MB.</p>
                     </div>
                 </div>
 
@@ -108,6 +134,39 @@ export default function ProfilePage() {
                         disabled
                     />
                     <p className="text-xs text-rl-gray mt-1.5">Email cannot be changed directly.</p>
+                </div>
+
+                <div>
+                    <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Bio</label>
+                    <textarea 
+                        className="input-field min-h-[100px] resize-y" 
+                        placeholder="Tell others a bit about yourself..."
+                        value={form.bio}
+                        onChange={e => setForm({...form, bio: e.target.value})}
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Phone Number</label>
+                        <input 
+                            type="tel" 
+                            className="input-field" 
+                            value={form.phone}
+                            placeholder="(555) 000-0000"
+                            onChange={e => setForm({...form, phone: e.target.value})}
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Address</label>
+                        <input 
+                            type="text" 
+                            className="input-field" 
+                            value={form.address}
+                            placeholder="123 Example St"
+                            onChange={e => setForm({...form, address: e.target.value})}
+                        />
+                    </div>
                 </div>
 
                 <div className="pt-4 border-t border-rl-gray-3">
