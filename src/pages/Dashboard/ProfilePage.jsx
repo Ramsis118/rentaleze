@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
+import AddressInput from '../../components/AddressInput'
 
 export default function ProfilePage() {
     const { user } = useAuth()
@@ -159,12 +160,10 @@ export default function ProfilePage() {
                     </div>
                     <div>
                         <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Address</label>
-                        <input 
-                            type="text" 
-                            className="input-field" 
+                        <AddressInput 
                             value={form.address}
+                            onChange={val => setForm({...form, address: val})}
                             placeholder="123 Example St"
-                            onChange={e => setForm({...form, address: e.target.value})}
                         />
                     </div>
                 </div>

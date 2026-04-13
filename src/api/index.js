@@ -16,8 +16,11 @@ class ApiClient {
 
     async request(endpoint, options = {}) {
         const headers = {
-            'Content-Type': 'application/json',
             ...options.headers
+        }
+
+        if (!(options.body instanceof FormData)) {
+            headers['Content-Type'] = headers['Content-Type'] || 'application/json'
         }
 
         if (this.accessToken) {

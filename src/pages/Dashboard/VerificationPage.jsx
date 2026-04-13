@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
+import AddressInput from '../../components/AddressInput'
 
 export default function VerificationPage() {
     const { user } = useAuth()
@@ -153,13 +154,10 @@ export default function VerificationPage() {
                         <p className="text-sm text-rl-gray mb-6">Please enter your primary residential address exactly as it appears on your ID.</p>
                         
                         <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Full Address</label>
-                        <input 
-                            type="text" 
-                            className="input-field" 
-                            placeholder="123 Main St, Apt 4B, City, State 12345"
+                        <AddressInput 
                             value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            required
+                            onChange={(val) => setAddress(val)}
+                            placeholder="123 Main St, Apt 4B, City, State 12345"
                         />
                     </div>
                     <button type="submit" disabled={loading} className="btn-primary w-full sm:w-auto px-8">
