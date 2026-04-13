@@ -6,7 +6,8 @@ import { readFileSync } from 'fs'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const db = new Database(join(__dirname, 'rentaleze.db'))
+const dbPath = process.env.DB_PATH || join(__dirname, 'rentaleze.db')
+const db = new Database(dbPath)
 
 // Enable foreign keys
 db.pragma('foreign_keys = ON')
