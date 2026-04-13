@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 const STEPS = {
     renter: [
@@ -79,9 +80,9 @@ export default function HowItWorks() {
 
                 {/* CTA */}
                 <div className="text-center mt-10">
-                    <button className="bg-rl-blue text-white font-semibold px-8 py-3 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors">
+                    <Link to={tab === 'renter' ? '/browse' : '/login'} className="inline-block bg-rl-blue text-white font-semibold px-8 py-3 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors">
                         {tab === 'renter' ? 'Start Browsing Items' : 'List Your First Item — Free'}
-                    </button>
+                    </Link>
                 </div>
             </div>
         </section>

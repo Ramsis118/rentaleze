@@ -47,7 +47,7 @@ export default function Navbar({ cartCount = 0, onCartClick }) {
 
     const navLinks = [
         { to: '/browse', label: 'Browse' },
-        { to: '/how-it-works', label: 'How It Works' },
+        { to: '/#how-it-works', label: 'How It Works' },
     ]
 
     return (
@@ -99,9 +99,9 @@ export default function Navbar({ cartCount = 0, onCartClick }) {
                         <div className="w-px h-5 bg-rl-gray-3 mx-1" />
 
                         {/* Sign In */}
-                        <button className="px-3.5 py-2 text-sm font-medium text-rl-dark-3 hover:text-rl-blue-600 hover:bg-rl-blue-50 rounded-lg transition-colors">
+                        <Link to="/login" className="px-3.5 py-2 text-sm font-medium text-rl-dark-3 hover:text-rl-blue-600 hover:bg-rl-blue-50 rounded-lg transition-colors">
                             Sign In
-                        </button>
+                        </Link>
 
                         {/* Cart Button */}
                         <button
@@ -118,9 +118,9 @@ export default function Navbar({ cartCount = 0, onCartClick }) {
                         </button>
 
                         {/* List Your Item CTA */}
-                        <button className="bg-rl-blue text-white font-semibold px-4 py-2 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors ml-2">
+                        <Link to="/login" className="bg-rl-blue text-white font-semibold flex items-center justify-center px-4 py-2 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors ml-2">
                             List Your Item
-                        </button>
+                        </Link>
                     </nav>
 
                     {/* Mobile Menu Toggle */}
@@ -161,12 +161,12 @@ export default function Navbar({ cartCount = 0, onCartClick }) {
                         </Link>
                     ))}
                     <div className="pt-4 flex flex-col gap-2 border-t border-rl-gray-3 mt-2">
-                        <button className="border border-rl-gray-3 text-rl-dark-3 font-medium px-5 py-2.5 rounded-xl text-sm">
+                        <Link to="/login" className="border border-rl-gray-3 text-rl-dark-3 text-center font-medium px-5 py-2.5 rounded-xl text-sm block">
                             Sign In
-                        </button>
-                        <button className="bg-rl-blue text-white font-semibold px-5 py-2.5 rounded-xl text-sm">
+                        </Link>
+                        <Link to="/login" className="bg-rl-blue text-white text-center font-semibold px-5 py-2.5 rounded-xl text-sm block">
                             List Your Item
-                        </button>
+                        </Link>
                     </div>
                 </div>
             )}
