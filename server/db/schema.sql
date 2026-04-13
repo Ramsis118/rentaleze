@@ -102,3 +102,52 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+-- Saved Listings
+CREATE TABLE IF NOT EXISTS saved_listings (
+  user_id TEXT NOT NULL,
+  listing_id TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, listing_id),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (listing_id) REFERENCES listings(id)
+);
+
+-- Payment Methods
+CREATE TABLE IF NOT EXISTS payment_methods (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  last_4 TEXT NOT NULL,
+  brand TEXT NOT NULL,
+  exp_month TEXT NOT NULL,
+  exp_year TEXT NOT NULL,
+  is_default INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Conversations (Chat)
+CREATE TABLE IF NOT EXISTS conversations (
+  id TEXT PRIMARY KEY,
+  listing_id TEXT NOT NULL,
+  user1_id TEXT NOT NULL,
+  user2_id TEXT NOT NULL,
+  last_message TEXT,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (listing_id) REFERENCES listings(id),
+  FOREIGN KEY (user1_id) REFERENCES users(id),
+  FOREIGN KEY (user2_id) REFERENCES users(id)
+);
+
+-- Messages
+CREATE TABLE IF NOT EXISTS messages (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL,
+  sender_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  is_read INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id),
+  FOREIGN KEY (sender_id) REFERENCES users(id)
+);

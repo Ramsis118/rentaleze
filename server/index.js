@@ -10,6 +10,9 @@ import { initDatabase, seedDatabase } from './db/database.js'
 import authRoutes from './routers/auth.js'
 import listingsRoutes from './routers/listings.js'
 import bookingsRoutes from './routers/bookings.js'
+import usersRoutes from './routers/users.js'
+import paymentsRoutes from './routers/payments.js'
+import messagesRoutes from './routers/messages.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -38,6 +41,9 @@ app.use(express.json())
 app.use('/api/auth', authRoutes)
 app.use('/api/listings', listingsRoutes)
 app.use('/api/bookings', bookingsRoutes)
+app.use('/api/users', usersRoutes)
+app.use('/api/payments', paymentsRoutes)
+app.use('/api/messages', messagesRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

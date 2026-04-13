@@ -9,6 +9,12 @@ import ListingDetailPage from './pages/ListingDetailPage'
 import CheckoutPage from './pages/CheckoutPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import DashboardLayout from './pages/Dashboard/DashboardLayout'
+import ProfilePage from './pages/Dashboard/ProfilePage'
+import MessagesPage from './pages/Dashboard/MessagesPage'
+import BookingsPage from './pages/Dashboard/BookingsPage'
+import SavedListingsPage from './pages/Dashboard/SavedListingsPage'
+import PaymentsPage from './pages/Dashboard/PaymentsPage'
 import { useCart } from './context/CartContext'
 
 function NotFound() {
@@ -38,6 +44,13 @@ function AppContent() {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<ProfilePage />} />
+            <Route path="messages" element={<MessagesPage />} />
+            <Route path="bookings" element={<BookingsPage />} />
+            <Route path="saved" element={<SavedListingsPage />} />
+            <Route path="payments" element={<PaymentsPage />} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

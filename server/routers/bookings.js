@@ -64,7 +64,7 @@ router.post('/', authenticate, (req, res) => {
     }
 })
 
-// Get user's bookings
+// Get user's bookings (as renter)
 router.get('/my', authenticate, (req, res) => {
     try {
         const bookings = db.prepare(`
@@ -79,6 +79,25 @@ router.get('/my', authenticate, (req, res) => {
     } catch (error) {
         console.error('Get bookings error:', error)
         res.status(500).json({ error: 'Failed to fetch bookings' })
+    }
+})
+
+// Get user's rentals (as owner)
+router.get('/rentals', authenticate, (req, res) => {
+    try {
+        const bookings = db.prepare(`
+      SELECT b.*, l.title, l.image, l.location, u.first_name, u.last_name, u.avatar as renter_avatar
+      FROM bookings b
+      JOIN listings l ON b.listing_id = l.id
+      JOIN users u ON b.user_id = u.id
+      WHERE l.owner_id = ?
+      ORDER BY b.created_at DESC
+    `).all(req.user.id)
+
+        res.json(bookings)
+    } catch (error) {
+        console.error('Get rentals error:', error)
+        res.status(500).json({ error: 'Failed to fetch rentals' })
     }
 })
 

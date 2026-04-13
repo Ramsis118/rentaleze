@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const SearchIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,9 +23,11 @@ const XIcon = () => (
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const [searchVal, setSearchVal] = useState('')
   const navigate = useNavigate()
   const location = useLocation()
+  const { user } = useAuth()
   const onBrowse = location.pathname === '/browse'
 
   useEffect(() => {
@@ -99,15 +102,44 @@ export default function Navbar() {
               How It Works
             </a>
             <div className="w-px h-5 bg-rl-gray-3 mx-1" />
-            <Link to="/login" className="px-3.5 py-2 text-sm font-medium text-rl-dark-3 hover:text-rl-blue-600 hover:bg-rl-blue-50 rounded-lg transition-colors">
-              Sign In
-            </Link>
-            <Link
-              to="/signup"
-              className="btn-primary text-sm py-2 px-4"
-            >
-              List Your Item
-            </Link>
+            
+            {!user ? (
+              <>
+                <Link to="/login" className="px-3.5 py-2 text-sm font-medium text-rl-dark-3 hover:text-rl-blue-600 hover:bg-rl-blue-50 rounded-lg transition-colors">
+                  Sign In
+                </Link>
+                <Link
+                  to="/signup"
+                  className="btn-primary text-sm py-2 px-4"
+                >
+                  List Your Item
+                </Link>
+              </>
+            ) : (
+              <div className="relative ml-2">
+                <button 
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center gap-2 hover:bg-rl-gray-4 p-1 rounded-xl transition-colors"
+                >
+                  {user.avatar ? (
+                      <img src={user.avatar} className="w-8 h-8 rounded-lg object-cover" />
+                  ) : (
+                      <div className="w-8 h-8 rounded-lg bg-rl-blue-50 text-rl-blue font-bold flex items-center justify-center text-sm">
+                          {user.first_name?.[0]}
+                      </div>
+                  )}
+                  <svg className="w-4 h-4 text-rl-gray" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-card border border-rl-gray-3 py-2 z-50">
+                      <Link to="/dashboard" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">Dashboard</Link>
+                      <Link to="/dashboard/messages" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">Messages</Link>
+                      <Link to="/dashboard/bookings" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">My Bookings</Link>
+                      <Link to="/dashboard/saved" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">Saved Items</Link>
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
 
           {/* Mobile menu toggle */}
@@ -143,8 +175,17 @@ export default function Navbar() {
           <Link to="/browse" className="block py-2.5 px-3 text-sm font-medium text-rl-dark-3 hover:bg-rl-blue-50 rounded-lg" onClick={() => setMobileOpen(false)}>Browse Items</Link>
           <a href="/#how-it-works" className="block py-2.5 px-3 text-sm font-medium text-rl-dark-3 hover:bg-rl-blue-50 rounded-lg" onClick={() => setMobileOpen(false)}>How It Works</a>
           <div className="pt-2 flex flex-col gap-2">
-            <Link to="/login" onClick={() => setMobileOpen(false)} className="btn-outline w-full text-center flex items-center justify-center text-sm py-2.5">Sign In</Link>
-            <Link to="/signup" onClick={() => setMobileOpen(false)} className="btn-primary w-full text-center flex items-center justify-center text-sm py-2.5">List Your Item</Link>
+            {!user ? (
+              <>
+                <Link to="/login" onClick={() => setMobileOpen(false)} className="btn-outline w-full text-center flex items-center justify-center text-sm py-2.5">Sign In</Link>
+                <Link to="/signup" onClick={() => setMobileOpen(false)} className="btn-primary w-full text-center flex items-center justify-center text-sm py-2.5">List Your Item</Link>
+              </>
+            ) : (
+              <>
+                <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="btn-outline w-full text-center flex items-center justify-center text-sm py-2.5">Dashboard</Link>
+                <Link to="/dashboard/messages" onClick={() => setMobileOpen(false)} className="btn-outline w-full text-center flex items-center justify-center text-sm py-2.5">Messages</Link>
+              </>
+            )}
           </div>
         </div>
       )}
