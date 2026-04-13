@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const EyeIcon = ({ visible }) => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,6 +30,8 @@ export default function LoginPage() {
         return Object.keys(e).length === 0
     }
 
+    const { login } = useAuth()
+
     const handleSubmit = async (e) => {
         e.preventDefault()
         setError('')
@@ -36,12 +39,15 @@ export default function LoginPage() {
         if (!validate()) return
 
         setLoading(true)
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        setLoading(false)
-
-        // For demo: accept any credentials
-        navigate('/')
+        try {
+            await login(email, password)
+            navigate('/')
+        } catch (err) {
+            console.error(err)
+            setError('Invalid email or password. Please try again.')
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -129,10 +135,7 @@ export default function LoginPage() {
                     </div>
                 </div>
 
-                {/* Demo note */}
-                <p className="text-xs text-center text-rl-gray mt-4">
-                    Demo: Enter any email/password to sign in
-                </p>
+
             </div>
         </div>
     )

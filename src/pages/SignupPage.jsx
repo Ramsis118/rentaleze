@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const EyeIcon = ({ visible }) => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,14 +50,29 @@ export default function SignupPage() {
         return Object.keys(e).length === 0
     }
 
+    const { signup } = useAuth()
+    
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (!validate()) return
 
         setLoading(true)
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-        setLoading(false)
-        navigate('/')
+        try {
+            await signup({
+                firstName: form.firstName,
+                lastName: form.lastName,
+                email: form.email,
+                password: form.password,
+                role: form.role
+            })
+            navigate('/')
+        } catch (err) {
+            console.error(err)
+            update('email', form.email) // Keep email logic
+            setErrors({ email: 'Failed to create account. Please try again.' })
+        } finally {
+            setLoading(false)
+        }
     }
 
     const inputCls = (key) =>
