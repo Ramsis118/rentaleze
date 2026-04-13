@@ -16,6 +16,7 @@ import BookingsPage from './pages/Dashboard/BookingsPage'
 import SavedListingsPage from './pages/Dashboard/SavedListingsPage'
 import PaymentsPage from './pages/Dashboard/PaymentsPage'
 import { useCart } from './context/CartContext'
+import { AuthProvider } from './context/AuthContext'
 
 function NotFound() {
   return (
@@ -61,8 +62,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <CartProvider>
-      <AppContent />
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <AppContent />
+      </CartProvider>
+    </AuthProvider>
   )
 }
