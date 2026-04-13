@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rentaleze — Rent Anything, Earn From Everything</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        rl: {
+          blue:     '#5BB3CF',
+          'blue-50':  '#F0F8FC',
+          'blue-100': '#D6EEF7',
+          'blue-200': '#AEDCEE',
+          'blue-300': '#7DC8E3',
+          'blue-400': '#5BB3CF',
+          'blue-500': '#3E9ABC',
+          'blue-600': '#2C7FA0',
+          dark:     '#1E2B37',
+          'dark-2': '#2D3D4F',
+          'dark-3': '#435363',
+          gray:     '#6B7A8A',
+          'gray-2': '#9AAAB8',
+          'gray-3': '#C8D4DC',
+          'gray-4': '#E8F0F5',
+          'off-white': '#F7FBFD',
+        }
+      },
+      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+      boxShadow: {
+        card: '0 2px 12px 0 rgba(30,43,55,0.08)',
+        'card-hover': '0 6px 24px 0 rgba(30,43,55,0.14)',
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #F7FBFD; color: #435363; }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  input[type=range] { -webkit-appearance: none; appearance: none; height: 6px; background: #C8D4DC; border-radius: 4px; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #5BB3CF; border-radius: 50%; cursor: pointer; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+  .animate-pulse-dot { animation: pulse-dot 1.5s infinite; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<div id="app"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- Error display if JS fails -->
+<div id="error-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#fee2e2;border-bottom:2px solid #f87171;padding:12px 16px;font-family:monospace;font-size:13px;color:#991b1b;white-space:pre-wrap;max-height:200px;overflow:auto;"></div>
+<script>
+window.onerror = function(msg, src, line, col, err) {
+  var b = document.getElementById('error-banner');
+  if (b) { b.style.display='block'; b.textContent = '⚠ JS Error: ' + msg + '\n' + (src||'') + ':' + line; }
+  return false;
+};
+</script>
+
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────
+const CATEGORIES = [
+  { id: 'all',      label: 'All Items',          icon: '✦' },
+  { id: 'tools',    label: 'Tools & Equipment',  icon: '🔧' },
+  { id: 'outdoor',  label: 'Outdoor & Camping',  icon: '⛺' },
+  { id: 'cameras',  label: 'Cameras & Audio',    icon: '📷' },
+  { id: 'sports',   label: 'Sports & Fitness',   icon: '🏄' },
+  { id: 'events',   label: 'Events & Party',     icon: '🎉' },
+  { id: 'baby',     label: 'Baby & Kids',        icon: '🧸' },
+  { id: 'musical',  label: 'Musical Instruments',icon: '🎸' },
+  { id: 'vehicles', label: 'Vehicles & Trailers',icon: '🚗' },
+];
+
+const LISTINGS = [
+  { id:1,  title:'DeWalt 20V Cordless Drill Set',           category:'tools',    pricePerDay:18,  rating:4.9, reviewCount:142, location:'Austin, TX',      image:'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400&q=80', ownerName:'Marcus T.', ownerAvatar:'https://i.pravatar.cc/40?img=11', badges:['Insured','Instant Book'], verified:true, fulfillment:'both'},
+  { id:2,  title:'4-Person Camping Tent (REI Co-op)',        category:'outdoor',  pricePerDay:28,  rating:4.8, reviewCount:87,  location:'Denver, CO',       image:'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=400&q=80', ownerName:'Sarah K.',  ownerAvatar:'https://i.pravatar.cc/40?img=5',  badges:['Insured'],               verified:true, fulfillment:'both'},
+  { id:3,  title:'Sony A7III Mirrorless Camera + 24-70mm',  category:'cameras',  pricePerDay:75,  rating:5.0, reviewCount:63,  location:'Los Angeles, CA',  image:'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&q=80', ownerName:'Priya N.',  ownerAvatar:'https://i.pravatar.cc/40?img=47', badges:['Insured','Instant Book'], verified:true, fulfillment:'both'},
+  { id:4,  title:'Stand-Up Paddleboard + Paddle',            category:'sports',   pricePerDay:45,  rating:4.7, reviewCount:55,  location:'Miami, FL',        image:'https://images.unsplash.com/photo-1530870110042-98b2cb110834?w=400&q=80', ownerName:'Carlos R.', ownerAvatar:'https://i.pravatar.cc/40?img=33', badges:['Insured'],               verified:false, fulfillment:'pickup'},
+  { id:5,  title:'Folding Tables + Chairs Set (20 pcs)',     category:'events',   pricePerDay:55,  rating:4.8, reviewCount:204, location:'Chicago, IL',      image:'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400&q=80', ownerName:'Angela M.', ownerAvatar:'https://i.pravatar.cc/40?img=20', badges:['Insured','Instant Book'], verified:true, fulfillment:'pickup'},
+  { id:6,  title:'Baby Jogger City Mini Stroller',           category:'baby',     pricePerDay:22,  rating:4.9, reviewCount:31,  location:'Seattle, WA',      image:'https://images.unsplash.com/photo-1591768793355-74d04bb6608f?w=400&q=80', ownerName:'Emily W.',  ownerAvatar:'https://i.pravatar.cc/40?img=9',  badges:['Insured'],               verified:true, fulfillment:'both'},
+  { id:7,  title:'Fender Stratocaster Electric Guitar',      category:'musical',  pricePerDay:35,  rating:4.6, reviewCount:19,  location:'Nashville, TN',    image:'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&q=80', ownerName:'Jake B.',   ownerAvatar:'https://i.pravatar.cc/40?img=15', badges:['Insured'],               verified:true, fulfillment:'both'},
+  { id:8,  title:'Cargo Trailer (6x12 ft, Enclosed)',        category:'vehicles', pricePerDay:85,  rating:4.7, reviewCount:44,  location:'Phoenix, AZ',      image:'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=400&q=80', ownerName:'Tom H.',    ownerAvatar:'https://i.pravatar.cc/40?img=52', badges:['Insured','Instant Book'], verified:true, fulfillment:'pickup'},
+  { id:9,  title:'Power Washer — 3200 PSI (Gas)',            category:'tools',    pricePerDay:40,  rating:4.8, reviewCount:98,  location:'Houston, TX',      image:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80', ownerName:'Derek J.',  ownerAvatar:'https://i.pravatar.cc/40?img=60', badges:['Insured'],               verified:true, fulfillment:'pickup'},
+  { id:10, title:'GoPro HERO12 + Accessories Kit',           category:'cameras',  pricePerDay:30,  rating:4.9, reviewCount:77,  location:'San Diego, CA',    image:'https://images.unsplash.com/photo-1502920514313-52581002a659?w=400&q=80', ownerName:'Nina L.',   ownerAvatar:'https://i.pravatar.cc/40?img=44', badges:['Insured','Instant Book'], verified:true, fulfillment:'both'},
+  { id:11, title:'Kayak (Single, 10ft) + Paddle',            category:'outdoor',  pricePerDay:38,  rating:4.7, reviewCount:66,  location:'Portland, OR',     image:'https://images.unsplash.com/photo-1555501083-a887c8f15ae7?w=400&q=80', ownerName:'Brian O.',  ownerAvatar:'https://i.pravatar.cc/40?img=25', badges:['Insured'],               verified:false, fulfillment:'pickup'},
+  { id:12, title:'Commercial Espresso Machine',              category:'events',   pricePerDay:120, rating:5.0, reviewCount:12,  location:'New York, NY',     image:'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&q=80', ownerName:'Rachel S.', ownerAvatar:'https://i.pravatar.cc/40?img=38', badges:['Insured','Instant Book'], verified:true, fulfillment:'pickup'},
+];
+
+// ─── LISTING DETAILS DATA ─────────────────────────────────────────────────
+const LISTING_DETAILS = {
+  1: { description:'This professional-grade DeWalt 20V MAX cordless drill delivers the power and precision you need for any project — from hanging shelves to framing walls. The brushless motor provides up to 57% more run time, and the 2-speed transmission gives you control for driving and drilling. Two charged batteries means no downtime.', images:['https://images.unsplash.com/photo-1504148455328-c376907d081c?w=900&q=85','https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=600&q=80','https://images.unsplash.com/photo-1530124566582-a618bc2615dc?w=600&q=80','https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80'], includes:['DeWalt DCD791 Drill','2× 20V MAX 2.0Ah Batteries','Fast Charger','29-piece Bit Set','Tool Belt Clip','Carrying Case'], specs:[['Voltage','20V MAX'],['Chuck Size','1/2"'],['No-Load Speed','0–2,000 RPM'],['Max Torque','57 ft-lbs'],['Weight','3.4 lbs'],['Condition','Excellent']], rules:['Clean before return','No outdoor wet use without cover','Bits included — keep together','Missing bits charged at replacement cost'], ownerSince:2021, ownerResponseRate:98, ownerResponseTime:'within 1 hour', ownerTotalReviews:142, ownerBio:'DIY enthusiast and weekend remodeler. I keep all my tools in perfect working order and love helping neighbors tackle their projects.', reviews:[{name:'Jordan M.',avatar:'https://i.pravatar.cc/48?img=32',rating:5,date:'March 2026',text:'Drill was in perfect condition, batteries fully charged. Finished my deck project in one weekend. Marcus was super helpful and dropped it off!'},{name:'Tonya B.',avatar:'https://i.pravatar.cc/48?img=16',rating:5,date:'February 2026',text:'Great tool, great owner. Returned it and Marcus actually thanked me for cleaning it so well. Will definitely rent again.'},{name:'Chris P.',avatar:'https://i.pravatar.cc/48?img=7',rating:5,date:'January 2026',text:'Exactly what I needed to mount my TV. Easy pickup, everything was there. Highly recommend.'}] },
+  2: { description:'The REI Co-op Trail Hut 4 is a bombproof 3-season shelter built for weekend warriors and thru-hikers alike. Color-coded clips and intuitive pole system means setup in under 10 minutes even in the dark. Two vestibules provide ample gear storage, and the full-coverage rainfly has been tested in Colorado mountain thunderstorms with zero leakage.', images:['https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=900&q=85','https://images.unsplash.com/photo-1496947850313-7743325fa58c?w=600&q=80','https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&q=80','https://images.unsplash.com/photo-1532339142463-fd0a8979791a?w=600&q=80'], includes:['REI Trail Hut 4 Tent Body','Full-Coverage Rainfly','2× Aluminum Poles','20× Tent Stakes','2× Guy Lines','Stuff Sack + Repair Kit'], specs:[['Capacity','4 Person'],['Season Rating','3-Season'],['Floor Area','56 sq ft'],['Peak Height','48"'],['Packed Weight','7 lbs 2 oz'],['Condition','Very Good']], rules:['Return dry and clean','Shake out all debris','No open flame inside','Report any damage immediately'], ownerSince:2020, ownerResponseRate:95, ownerResponseTime:'within 3 hours', ownerTotalReviews:87, ownerBio:'Outdoor guide and avid backpacker. My gear is well-maintained and adventure-ready. Happy to give trail recommendations for your trip!', reviews:[{name:'Samantha P.',avatar:'https://i.pravatar.cc/48?img=48',rating:5,date:'March 2026',text:'Set up in under 10 minutes exactly as described. Held up perfectly through a surprise rainstorm on night two.'},{name:'Ryan W.',avatar:'https://i.pravatar.cc/48?img=67',rating:4,date:'February 2026',text:'Spacious and well-made. One of the guy lines had a small tangle but nothing serious. Would rent again.'},{name:'Mia K.',avatar:'https://i.pravatar.cc/48?img=56',rating:5,date:'January 2026',text:'Sarah even texted me trail tips for RMNP. Above and beyond!'}] },
+  3: { description:'Shoot like a pro without the pro price tag. The Sony A7III is one of the best full-frame mirrorless cameras ever made — renowned for class-leading autofocus, 10fps burst, 4K video, and exceptional low-light performance. The kit includes the versatile 24-70mm f/2.8 G Master lens, perfect for weddings, events, portraits, and street photography.', images:['https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=900&q=85','https://images.unsplash.com/photo-1502982720700-bfff97f2ecac?w=600&q=80','https://images.unsplash.com/photo-1580907742344-1fa025fbcb72?w=600&q=80','https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?w=600&q=80'], includes:['Sony A7III Body','Sony 24-70mm f/2.8 GM Lens','3× NP-FZ100 Batteries','Dual Charger','128GB CFexpress Card','Peak Design Strap','Lens Filters (UV + CPL)','Hard Case'], specs:[['Sensor','24.2MP Full-Frame BSI CMOS'],['ISO Range','100–51200'],['Burst Rate','10fps'],['Video','4K 30fps / 1080p 120fps'],['Stabilization','5-axis IBIS'],['Condition','Like New']], rules:['Never leave in direct sun or car','Use only included strap','Return in hard case','SD card must be cleared','Damage deposit required'], ownerSince:2019, ownerResponseRate:100, ownerResponseTime:'within 30 min', ownerTotalReviews:63, ownerBio:'Professional photographer and Sony Ambassador. I shoot weddings and commercial work. Everything is sensor-cleaned before every rental.', reviews:[{name:'Arjun T.',avatar:'https://i.pravatar.cc/48?img=59',rating:5,date:'March 2026',text:'Shot an entire wedding weekend with this kit. Priya gave me a 10-minute briefing before I left. Zero issues. The 24-70 is absolutely stunning.'},{name:'Leila S.',avatar:'https://i.pravatar.cc/48?img=43',rating:5,date:'February 2026',text:'Gear arrived clean, calibrated, and batteries fully charged. Priya responded to my questions at 11pm. Worth every penny.'},{name:'Noah G.',avatar:'https://i.pravatar.cc/48?img=3',rating:5,date:'January 2026',text:'The low light performance is insane. Shot a concert with ISO 12800 and the images came out clean. This is my go-to rental.'}] },
+  4: { description:'Experience the calm of open water on this premium 11-foot inflatable SUP. Wider and more stable than hard boards, this board is perfect for beginners and casual paddlers while still performing well for more experienced riders. Comes fully inflated and ready to go. Board capacity is 300 lbs.', images:['https://images.unsplash.com/photo-1530870110042-98b2cb110834?w=900&q=85','https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=600&q=80','https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&q=80','https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&q=80'], includes:["11' Inflatable SUP Board",'Adjustable Carbon Fiber Paddle','Electric Pump + Hand Pump','Ankle Leash','Board Bag / Carry Strap','Waterproof Phone Pouch'], specs:[['Length',"11'0\""],['Width','33"'],['Thickness','6"'],['Capacity','300 lbs'],['Board Type','All-Around Inflatable'],['Condition','Good']], rules:['Return deflated and towel-dried','Do not drag on concrete/rocks','Leash must be worn at all times','Life jacket strongly recommended (not included)'], ownerSince:2022, ownerResponseRate:91, ownerResponseTime:'within 4 hours', ownerTotalReviews:55, ownerBio:'Miami local and ocean lover. I rent this board between my own sessions — it is well loved and well maintained. Happy to suggest great paddling spots!', reviews:[{name:'Dana W.',avatar:'https://i.pravatar.cc/48?img=22',rating:5,date:'March 2026',text:'Perfect first SUP experience! Board was stable and easy. Carlos met me at the put-in point which was super helpful.'},{name:'Mike R.',avatar:'https://i.pravatar.cc/48?img=70',rating:4,date:'February 2026',text:'Great board and great price. Pump works well and the carry bag makes transport easy. Minor scuffs on bottom but nothing structural.'},{name:'Jasmine C.',avatar:'https://i.pravatar.cc/48?img=49',rating:5,date:'January 2026',text:'Spent 3 days paddling Biscayne Bay with this. No issues at all. Will definitely rent again!'}] },
+  5: { description:"Everything you need for your next gathering, from backyard parties to professional events. This 20-piece set includes 8 sturdy 6-foot folding tables and 12 padded folding chairs. Tables hold up to 500 lbs each; chairs are stackable and comfortable for 4+ hour events. Angela has been supplying Chicago events since 2019 with a perfect track record.", images:['https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=900&q=85','https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=80','https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&q=80','https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&q=80'], includes:['8× 6ft Folding Tables (White)','12× Padded Folding Chairs (White)','Transport Dollies (2)','Furniture Pads (8)','Delivery available within 10mi'], specs:[['Table Dimensions','6ft × 30in'],['Table Capacity','500 lbs each'],['Chair Type','Padded Folding'],['Color','White'],['Pieces','20 total'],['Condition','Excellent']], rules:['Tables returned wiped clean','Chairs stacked as received','Report damage before event ends','Delivery/pickup available — ask for quote'], ownerSince:2019, ownerResponseRate:99, ownerResponseTime:'within 1 hour', ownerTotalReviews:204, ownerBio:'Event rental professional. I have supplied over 500 Chicago events since 2019. Delivery and setup available for an additional fee.', reviews:[{name:'Brandon K.',avatar:'https://i.pravatar.cc/48?img=18',rating:5,date:'March 2026',text:"Angela delivered AND set up the tables for my daughter's birthday. Absolutely worth it. Everything was spotless."},{name:'Grace T.',avatar:'https://i.pravatar.cc/48?img=29',rating:5,date:'February 2026',text:'Used for a corporate luncheon. Tables and chairs held up through a 200-person event with no issues. Pickup was fast and easy.'},{name:'Omar F.',avatar:'https://i.pravatar.cc/48?img=65',rating:5,date:'January 2026',text:"Best rental experience I've had. Communication was excellent and everything was as described. Highly recommend."}] },
+  6: { description:"The Baby Jogger City Mini is widely considered the best everyday stroller for parents on the go. Its quick-fold technology means it collapses with just one hand in under 2 seconds — no awkward multi-step folding. The all-wheel suspension handles city sidewalks, gravel paths, and everything in between. Perfect for traveling families visiting Seattle.", images:['https://images.unsplash.com/photo-1591768793355-74d04bb6608f?w=900&q=85','https://images.unsplash.com/photo-1519689680058-324335c77eba?w=600&q=80','https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=600&q=80','https://images.unsplash.com/photo-1546961342-y5b2a2c8b784?w=600&q=80'], includes:['Baby Jogger City Mini Stroller','Weather Shield Rain Cover','Parent Console (cup holder)','Child Snack Tray','Carry Bag'], specs:[['Age Range','6 months – 65 lbs'],['Fold Type','One-Hand Quick Fold'],['Seat Recline','Near-Flat'],['Wheel Type','All-terrain suspension'],['Folded Size','28" × 24" × 12"'],['Condition','Very Good']], rules:['Sanitize before return','Do not use in standing water','Weight limit 65 lbs','Child must be strapped in at all times'], ownerSince:2023, ownerResponseRate:97, ownerResponseTime:'within 2 hours', ownerTotalReviews:31, ownerBio:'Mom of two who knows how expensive baby gear is. I rent out gear when the kids grow out of it — everything is thoroughly sanitized between uses.', reviews:[{name:'Priya M.',avatar:'https://i.pravatar.cc/48?img=41',rating:5,date:'March 2026',text:'Saved us from checking a stroller on our flight to Seattle. In perfect condition, easy to fold. Emily was incredibly helpful.'},{name:'Steven A.',avatar:'https://i.pravatar.cc/48?img=12',rating:5,date:'February 2026',text:'Rented for a week-long family trip. The one-hand fold is as good as advertised. Rain cover was a lifesaver in Seattle weather.'},{name:'Kim L.',avatar:'https://i.pravatar.cc/48?img=53',rating:4,date:'January 2026',text:'Great stroller, handles well. One wheel squeak but nothing serious. Would use again.'}] },
+  7: { description:"Play one of the most iconic guitars ever made. This American-made Fender Stratocaster produces the legendary bell-like clean tones and smooth overdrive that has defined rock, blues, and country for 70 years. Set up with fresh D'Addario 10s and a professional fret polish. Perfect for a recording session, gig, or vacation practice.", images:['https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=900&q=85','https://images.unsplash.com/photo-1525201548942-d8732f6617a0?w=600&q=80','https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&q=80','https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80'], includes:['Fender American Professional II Stratocaster','Hardshell Case','Fender 10ft Cable','Strap','Guitar Picks (assorted)','Mini Travel Amp (optional — ask)'], specs:[['Body','Alder'],['Neck','Maple, Modern C Profile'],['Pickups','V-Mod II Single-Coil (×3)'],['Tuners','Locking'],['Frets','22 Narrow Tall'],['Condition','Excellent']], rules:['Return in hardshell case','No humidity extremes','Do not restring — notify if string breaks','Handle strap pins with care'], ownerSince:2020, ownerResponseRate:93, ownerResponseTime:'within 3 hours', ownerTotalReviews:19, ownerBio:"Nashville session musician and guitar tech. I collect and maintain vintage and modern Fenders. This one is fresh off a full setup — plays and sounds perfect.", reviews:[{name:'Alex D.',avatar:'https://i.pravatar.cc/48?img=37',rating:5,date:'March 2026',text:'Used this for a studio session in Nashville. It recorded beautifully. Action is perfect, stays in tune all day.'},{name:'Kelsey N.',avatar:'https://i.pravatar.cc/48?img=27',rating:4,date:'February 2026',text:'Great guitar for a great price. Jake even offered a loaner amp when mine blew a fuse. Stellar service.'},{name:'Marcus V.',avatar:'https://i.pravatar.cc/48?img=8',rating:5,date:'January 2026',text:'This is the real deal. American-made Strat that feels like butter. Will absolutely rent again.'}] },
+  8: { description:'Move anything, anywhere. This 6×12 enclosed cargo trailer handles everything from moving furniture and appliances to hauling equipment for events or job sites. Lockable rear ramp door makes loading easy. Interior height is 5.5 feet — tall enough to stand upright inside. Hitch receiver fits most full-size trucks and SUVs (2" ball required).', images:['https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=900&q=85','https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80','https://images.unsplash.com/photo-1505843513577-22bb7d21e455?w=600&q=80','https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=600&q=80'], includes:['6×12 Enclosed Cargo Trailer','Rear Ramp Door','Side Door (driver side)','4× Cargo Tie-Down Rings','1× Moving Blanket','Hitch Ball Lock'], specs:[['Interior','6ft × 12ft × 5.5ft'],['GVWR','3,500 lbs'],['Hitch','2" Ball (required)'],['Lighting','LED Full'],['Door','V-Nose Rear Ramp'],['Condition','Good']], rules:['Must have valid tow vehicle','2" ball required (+$5/day available)','Do not exceed 3,500 GVWR','Return clean and swept out','No hazardous materials'], ownerSince:2020, ownerResponseRate:94, ownerResponseTime:'within 2 hours', ownerTotalReviews:44, ownerBio:'Contractor and weekend mover. I rent this trailer between my own hauling jobs. It is regularly serviced and in great working order.', reviews:[{name:'Frank B.',avatar:'https://i.pravatar.cc/48?img=50',rating:5,date:'March 2026',text:'Moved an entire apartment across Phoenix. Trailer pulled perfectly behind my F-150 and everything fit.'},{name:'Sandra K.',avatar:'https://i.pravatar.cc/48?img=35',rating:4,date:'February 2026',text:'Solid trailer. Saved me $200 versus U-Haul for a one-day move. Will rent again.'},{name:'Victor M.',avatar:'https://i.pravatar.cc/48?img=63',rating:5,date:'January 2026',text:'Used for equipment transport to a job site. Loaded with power tools and not a single issue. Highly recommend.'}] },
+  9: { description:'Get professional-level cleaning results without the rental line at the hardware store. This 3200 PSI gas-powered pressure washer blasts through years of grime on driveways, decks, fences, patios, and vehicles. Includes four quick-connect nozzles and 25 feet of high-pressure hose. Easy-start recoil engine starts first pull every time.', images:['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900&q=85','https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&q=80','https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=80','https://images.unsplash.com/photo-1484154218962-a197022b5858?w=600&q=80'], includes:['3200 PSI Gas Pressure Washer','4× Quick-Connect Nozzles (0°/25°/40°/Soap)','25ft High-Pressure Hose','Spray Wand + Gun','Garden Hose Adapter','Pressure Washer Detergent (1 qt)'], specs:[['PSI','3,200'],['GPM','2.5'],['Engine','212cc OHV Gas'],['Hose Length','25 ft'],['Nozzles','4 Quick-Connect'],['Condition','Good']], rules:['Return with empty fuel tank','Clean nozzles before return','Do not point at people or animals','Do not use 0° nozzle on painted wood'], ownerSince:2021, ownerResponseRate:96, ownerResponseTime:'within 2 hours', ownerTotalReviews:98, ownerBio:'Property maintenance professional. I rent this between my own client jobs. It is serviced every 30 uses and runs perfectly.', reviews:[{name:'Jordan M.',avatar:'https://i.pravatar.cc/48?img=32',rating:5,date:'March 2026',text:'Saved $400 vs. buying. Cleaned an entire driveway, back patio, and fence in one afternoon. Unreal power.'},{name:'Diane R.',avatar:'https://i.pravatar.cc/48?img=21',rating:5,date:'February 2026',text:'Used for spring deck cleaning. Started on first pull just like described. Derek even texted a guide for which nozzle to use.'},{name:'Paul N.',avatar:'https://i.pravatar.cc/48?img=62',rating:4,date:'January 2026',text:'Powerful machine. One small soap nozzle clog but cleared easily. Would rent again.'}] },
+  10:{ description:'Capture every adventure in stunning 5.3K video and 27MP photos with the latest GoPro HERO12 Black. This all-in-one adventure kit has everything you need to shoot surfing, hiking, snowboarding, cycling, travel, and more. HyperSmooth 6.0 stabilization makes every shot buttery smooth — no gimbal required. Waterproof to 33ft right out of the box.', images:['https://images.unsplash.com/photo-1502920514313-52581002a659?w=900&q=85','https://images.unsplash.com/photo-1549737221-bef65e2604a6?w=600&q=80','https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?w=600&q=80','https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=600&q=80'], includes:['GoPro HERO12 Black','3× Enduro Batteries','Dual Battery Charger','128GB SD Card','Chest Mount Harness','Head Strap','Handlebar Mount','Travel Case'], specs:[['Video','5.3K60 / 4K120'],['Photo','27MP'],['Stabilization','HyperSmooth 6.0'],['Waterproof','33ft'],['Battery Life','70min (5.3K)'],['Condition','Like New']], rules:['Return with SD card wiped','Do not open housing underwater','Floaty must be attached in water','Return all mounts as received'], ownerSince:2022, ownerResponseRate:99, ownerResponseTime:'within 30 min', ownerTotalReviews:77, ownerBio:'Adventure photographer based in San Diego. I upgrade my GoPro kit every year so I always have the latest model. All mounts and accessories included.', reviews:[{name:'Tyler K.',avatar:'https://i.pravatar.cc/48?img=4',rating:5,date:'March 2026',text:'Shot our entire surf trip with this. The 5.3K resolution is absolutely wild. Nina had it prepped and ready when I picked it up.'},{name:'Chloe B.',avatar:'https://i.pravatar.cc/48?img=45',rating:5,date:'February 2026',text:'Rented for a ski trip. HyperSmooth is a game changer — zero shake even on moguls. Three batteries was more than enough for a full day.'},{name:'Josh S.',avatar:'https://i.pravatar.cc/48?img=6',rating:5,date:'January 2026',text:'Best GoPro rental experience. Nina was super communicative and even helped me set up the time-lapse mode over text. 10/10.'}] },
+  11:{ description:"Hit Portland's incredible waterways in this lightweight, stable recreational kayak. At just 10 feet, this kayak is easy to transport on most car roof racks and handles well on flatwater rivers, lakes, and calm coastal bays. The open cockpit design is comfortable for paddlers of all sizes.", images:['https://images.unsplash.com/photo-1555501083-a887c8f15ae7?w=900&q=85','https://images.unsplash.com/photo-1501854140801-50d01698950b?w=600&q=80','https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=80','https://images.unsplash.com/photo-1530866495561-507c9faab2ed?w=600&q=80'], includes:["10ft Sit-In Kayak",'Adjustable Aluminum Paddle','Foam Float Bags (×2)','Bungee Deck Rigging','Roof Rack Foam Pads'], specs:[['Length',"10'0\""],['Width','28"'],['Capacity','325 lbs'],['Cockpit','Open Sit-In'],['Hull','Polyethylene'],['Condition','Good']], rules:['Life jacket required (not included)','Return rinsed with fresh water','Do not drag on concrete','Report any hull damage immediately'], ownerSince:2021, ownerResponseRate:88, ownerResponseTime:'within 4 hours', ownerTotalReviews:66, ownerBio:"Portland local who paddles the Willamette and Columbia Slough regularly. I'm happy to share the best put-in spots for your experience level.", reviews:[{name:'Gina P.',avatar:'https://i.pravatar.cc/48?img=26',rating:5,date:'March 2026',text:'Spent an afternoon on the Willamette with this. Easy to handle, stable, and Brian gave me a perfect put-in recommendation.'},{name:'Derek L.',avatar:'https://i.pravatar.cc/48?img=14',rating:4,date:'February 2026',text:'Good kayak, good price. Slight scuff on the hull but paddles just fine. Would rent again.'},{name:'Amy H.',avatar:'https://i.pravatar.cc/48?img=31',rating:5,date:'January 2026',text:'Rented for a birthday kayak trip. Fit easily on my Subaru with the foam pads. Super fun.'}] },
+  12:{ description:"Bring café-quality espresso to your event, pop-up, or photo shoot. This La Marzocco Linea Mini is a professional two-group commercial espresso machine capable of pulling 200+ shots in a day. Includes a commercial-grade Baratza Forte grinder pre-dosed for espresso. Rachel provides setup and a mandatory 15-minute operation briefing.", images:['https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900&q=85','https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&q=80','https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=80','https://images.unsplash.com/photo-1511920170033-f8396924c348?w=600&q=80'], includes:['La Marzocco Linea Mini (2-group)','Baratza Forte Grinder','2× Portafilters + Baskets','Milk Steaming Pitcher (×2)','Tamper + Distribution Tool','Knock Box','Cleaning Supplies Kit','1 lb House Espresso'], specs:[['Machine','La Marzocco Linea Mini'],['Groups','2'],['Boiler','Dual (0.75L + 1.5L)'],['Output','200+ shots/day'],['Power','120V / 20A circuit required'],['Condition','Professional']], rules:['20A dedicated circuit required','Do not move while hot','Mandatory 15-min setup briefing with Rachel','Do not adjust boiler pressure','Return fully cleaned per checklist'], ownerSince:2022, ownerResponseRate:100, ownerResponseTime:'within 1 hour', ownerTotalReviews:12, ownerBio:'Former barista, current coffee equipment consultant. Every rental includes a 15-minute operation briefing so your staff can pull perfect shots.', reviews:[{name:'Lena M.',avatar:'https://i.pravatar.cc/48?img=46',rating:5,date:'March 2026',text:'Used this at our office holiday party. Rachel arrived early to set up and brief our barista. Guests were absolutely blown away.'},{name:'Stefan B.',avatar:'https://i.pravatar.cc/48?img=57',rating:5,date:'February 2026',text:'Rented for a 2-day film production. Machine ran flawlessly all day. The briefing was thorough and helpful.'},{name:'Irene T.',avatar:'https://i.pravatar.cc/48?img=39',rating:5,date:'January 2026',text:'Worth every dollar. This machine at our wedding made us look like absolute rockstars. Rachel is a gem.'}] },
+};
+
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+// ─── ICONS ────────────────────────────────────────────────────────────────
+const Icon = {
+  Search: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>,
+  Location: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
+  Star: () => <svg className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>,
+  Shield: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>,
+  Heart: ({filled}) => <svg className="w-4 h-4" fill={filled?"#5BB3CF":"none"} stroke={filled?"#5BB3CF":"currentColor"} strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>,
+  Menu: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/></svg>,
+  X: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>,
+  Filter: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>,
+  Check: () => <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>,
+  Chevron: ({open}) => <svg className={`w-4 h-4 transition-transform ${open?'rotate-180':''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>,
+  Grid: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>,
+  List: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>,
+  Arrow: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>,
+};
+
+// ─── ROUTER ───────────────────────────────────────────────────────────────
+function useRouter() {
+  const [page, setPage] = useState(() => window.location.hash.replace('#', '') || '/');
+  const [params, setParams] = useState({});
+
+  useEffect(() => {
+    const handler = () => {
+      const hash = window.location.hash;
+      const [path, query] = hash.replace('#', '').split('?');
+      const p = {};
+      if (query) query.split('&').forEach(kv => { const [k,v]=kv.split('='); p[k]=decodeURIComponent(v||''); });
+      setPage(path || '/');
+      setParams(p);
+    };
+    window.addEventListener('hashchange', handler);
+    handler();
+    return () => window.removeEventListener('hashchange', handler);
+  }, []);
+
+  const navigate = (path) => { window.location.hash = path; };
+
+  return { page, params, navigate };
+}
+
+// ─── NAVBAR ───────────────────────────────────────────────────────────────
+function Navbar({ navigate, currentPage, cartCount, onOpenCart }) {
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const h = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', h);
+    return () => window.removeEventListener('scroll', h);
+  }, []);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    navigate(`/browse?q=${encodeURIComponent(search)}`);
+    setMobileOpen(false);
+  };
+
+  return (
+    <header className={`sticky top-0 z-50 bg-white transition-shadow duration-200 ${scrolled ? 'shadow-md' : 'shadow-sm border-b border-rl-gray-3/50'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center h-16 gap-4">
+          {/* Logo */}
+          <button onClick={() => navigate('/')} className="flex items-center gap-2 shrink-0">
+            <div className="w-8 h-8 bg-rl-blue rounded-lg flex items-center justify-center shadow-sm">
+              <span className="text-white font-bold text-sm">R</span>
+            </div>
+            <span className="font-bold text-rl-dark text-lg tracking-tight">
+              Rental<span className="text-rl-blue">eze</span>
+            </span>
+          </button>
+
+          {/* Search bar — desktop */}
+          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md items-center bg-rl-gray-4 rounded-xl border border-rl-gray-3 focus-within:border-rl-blue focus-within:ring-2 focus-within:ring-rl-blue-200 transition-all overflow-hidden">
+            <span className="pl-3.5 text-rl-gray-2"><Icon.Search /></span>
+            <input
+              type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search for anything to rent..."
+              className="flex-1 px-3 py-2 bg-transparent text-sm text-rl-dark placeholder-rl-gray-2 outline-none"
+            />
+            {search && (
+              <button type="submit" className="mr-1 bg-rl-blue text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-rl-blue-500">
+                Search
+              </button>
+            )}
+          </form>
+
+          {/* Nav links */}
+          <nav className="hidden md:flex items-center gap-1 shrink-0">
+            <button onClick={() => navigate('/browse')} className={`px-3.5 py-2 text-sm font-medium rounded-lg transition-colors ${currentPage==='/browse'?'text-rl-blue bg-rl-blue-50':'text-rl-dark-3 hover:text-rl-blue-600 hover:bg-rl-blue-50'}`}>Browse</button>
+            <button onClick={() => navigate('/#how')} className="px-3.5 py-2 text-sm font-medium text-rl-dark-3 hover:text-rl-blue-600 hover:bg-rl-blue-50 rounded-lg transition-colors">How It Works</button>
+            <div className="w-px h-5 bg-rl-gray-3 mx-1" />
+            <button className="px-3.5 py-2 text-sm font-medium text-rl-dark-3 hover:text-rl-blue-600 hover:bg-rl-blue-50 rounded-lg transition-colors">Sign In</button>
+            <button onClick={onOpenCart} className="relative w-9 h-9 rounded-xl border border-rl-gray-3 flex items-center justify-center text-rl-dark hover:border-rl-blue hover:text-rl-blue transition-colors">
+              <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+              {cartCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 bg-rl-blue text-white text-xs font-bold rounded-full flex items-center justify-center">{cartCount}</span>}
+            </button>
+            <button className="bg-rl-blue text-white font-semibold px-4 py-2 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors">List Your Item</button>
+          </nav>
+
+          {/* Mobile menu toggle */}
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 rounded-lg text-rl-dark-3 hover:bg-rl-gray-4 ml-auto">
+            {mobileOpen ? <Icon.X /> : <Icon.Menu />}
+          </button>
+        </div>
+
+        {/* Mobile search */}
+        <div className="md:hidden pb-3">
+          <form onSubmit={handleSearch} className="flex items-center bg-rl-gray-4 rounded-xl border border-rl-gray-3 overflow-hidden">
+            <span className="pl-3.5 text-rl-gray-2"><Icon.Search /></span>
+            <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search for anything..." className="flex-1 px-3 py-2.5 bg-transparent text-sm outline-none" />
+          </form>
+        </div>
+      </div>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div className="md:hidden bg-white border-t border-rl-gray-3 px-4 pb-4 pt-2 space-y-1">
+          <button onClick={() => { navigate('/browse'); setMobileOpen(false); }} className="block w-full text-left py-2.5 px-3 text-sm font-medium text-rl-dark-3 hover:bg-rl-blue-50 rounded-lg">Browse Items</button>
+          <div className="pt-2 flex flex-col gap-2">
+            <button className="border border-rl-gray-3 text-rl-dark-3 font-medium px-5 py-2.5 rounded-xl text-sm">Sign In</button>
+            <button className="bg-rl-blue text-white font-semibold px-5 py-2.5 rounded-xl text-sm">List Your Item</button>
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}
+
+// ─── HERO ─────────────────────────────────────────────────────────────────
+function Hero({ navigate }) {
+  const [query, setQuery] = useState('');
+  const [location, setLocation] = useState('');
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    navigate(`/browse?q=${encodeURIComponent(query)}&loc=${encodeURIComponent(location)}`);
+  };
+
+  const popular = ['Power washer', 'Camera kit', 'Camping tent', 'Kayak', 'Party tables'];
+
+  return (
+    <section className="relative overflow-hidden bg-gradient-to-br from-rl-dark via-rl-dark-2 to-[#2D3D4F] pt-16 pb-20">
+      {/* bg decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-rl-blue rounded-full opacity-10 blur-3xl"/>
+        <div className="absolute top-40 -left-16 w-72 h-72 bg-rl-blue-300 rounded-full opacity-8 blur-3xl"/>
+        <div className="absolute inset-0 opacity-5" style={{backgroundImage:'radial-gradient(circle, #5BB3CF 1px, transparent 1px)',backgroundSize:'40px 40px'}}/>
+      </div>
+
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
+        {/* Eyebrow */}
+        <div className="inline-flex items-center gap-2 bg-rl-blue/20 border border-rl-blue/30 text-rl-blue-200 text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
+          <span className="w-1.5 h-1.5 bg-rl-blue rounded-full animate-pulse-dot"/>
+          The Amazon of Rentals — Launching 2026
+        </div>
+
+        {/* Headline */}
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white leading-tight mb-4">
+          Rent Anything.<br/>
+          <span className="text-rl-blue-300">Earn From Everything.</span>
+        </h1>
+        <p className="text-lg text-rl-gray-2 max-w-2xl mx-auto mb-10">
+          The trusted marketplace where anyone can rent what they need or earn money from items sitting idle. Every rental covered by built-in insurance.
+        </p>
+
+        {/* Search */}
+        <form onSubmit={handleSearch} className="bg-white rounded-2xl shadow-2xl p-2 flex flex-col sm:flex-row gap-2 max-w-2xl mx-auto mb-6">
+          <div className="flex-1 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-rl-gray-4 border border-rl-gray-3">
+            <span className="text-rl-gray-2"><Icon.Search /></span>
+            <input type="text" placeholder="What do you need to rent?" value={query} onChange={e=>setQuery(e.target.value)} className="flex-1 bg-transparent text-sm text-rl-dark placeholder-rl-gray-2 outline-none font-medium"/>
+          </div>
+          <div className="hidden sm:block w-px bg-rl-gray-3"/>
+          <div className="flex-1 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-rl-gray-4 border border-rl-gray-3">
+            <span className="text-rl-gray-2"><Icon.Location /></span>
+            <input type="text" placeholder="City or ZIP code" value={location} onChange={e=>setLocation(e.target.value)} className="flex-1 bg-transparent text-sm text-rl-dark placeholder-rl-gray-2 outline-none font-medium"/>
+          </div>
+          <button type="submit" className="bg-rl-blue text-white font-bold px-7 py-3 rounded-xl hover:bg-rl-blue-500 transition-colors flex items-center justify-center gap-2 shrink-0 text-sm">
+            <Icon.Search/> Search
+          </button>
+        </form>
+
+        {/* Popular searches */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
+          <span className="text-xs text-rl-gray-2 font-medium">Popular:</span>
+          {popular.map(t => (
+            <button key={t} onClick={() => navigate(`/browse?q=${encodeURIComponent(t)}`)}
+              className="text-xs text-rl-blue-200 hover:text-white bg-rl-blue/15 hover:bg-rl-blue/25 border border-rl-blue/20 px-3 py-1 rounded-full transition-colors">
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {/* Trust badges */}
+        <div className="flex items-center justify-center gap-6 flex-wrap">
+          {[['🛡️','Every rental insured'],['✅','Verified users'],['🇺🇸','Nationwide']].map(([icon,text]) => (
+            <div key={text} className="flex items-center gap-2 text-rl-gray-2 text-sm"><span>{icon}</span><span>{text}</span></div>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats bar */}
+      <div className="relative mt-14 border-t border-white/10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 grid grid-cols-3 gap-4 text-center">
+          {[['10,000+','Items Listed'],['$0','Listing Fee'],['100%','Insured Rentals']].map(([num,label]) => (
+            <div key={label}>
+              <div className="text-2xl sm:text-3xl font-extrabold text-white">{num}</div>
+              <div className="text-xs sm:text-sm text-rl-gray-2 mt-1">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── LISTING CARD ─────────────────────────────────────────────────────────
+function ListingCard({ listing, navigate }) {
+  const [liked, setLiked] = useState(false);
+  return (
+    <div onClick={() => navigate(`/listing/${listing.id}`)} className="bg-white rounded-2xl shadow-card border border-rl-gray-3/60 hover:shadow-card-hover transition-shadow duration-200 flex flex-col cursor-pointer group overflow-hidden">
+      <div className="relative aspect-[4/3] overflow-hidden bg-rl-gray-4 rounded-t-2xl">
+        <img src={listing.image} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy"/>
+        <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm font-bold text-sm px-3 py-1.5 rounded-xl shadow-sm">
+          <span className="text-rl-blue-600">${listing.pricePerDay}</span>
+          <span className="text-rl-gray font-normal text-xs"> / day</span>
+        </div>
+        <button onClick={e=>{e.stopPropagation();setLiked(!liked);}} className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors">
+          <Icon.Heart filled={liked}/>
+        </button>
+        {listing.verified && (
+          <div className="absolute top-3 left-3 bg-rl-blue/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full">Verified</div>
+        )}
+      </div>
+      <div className="flex flex-col flex-1 p-4">
+        <h3 className="font-semibold text-rl-dark text-sm leading-snug line-clamp-2 mb-2 group-hover:text-rl-blue-600 transition-colors">{listing.title}</h3>
+        <div className="flex items-center justify-between text-xs text-rl-gray mb-3">
+          <div className="flex items-center gap-1">
+            <Icon.Star/>
+            <span className="font-semibold text-rl-dark-3">{listing.rating.toFixed(1)}</span>
+            <span className="text-rl-gray-2">({listing.reviewCount})</span>
+          </div>
+          <span>{listing.location}</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-auto">
+          {listing.badges.includes('Insured') && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full"><Icon.Shield/>Insured</span>
+          )}
+          {listing.badges.includes('Instant Book') && (
+            <span className="text-xs font-medium text-rl-blue-600 bg-rl-blue-50 border border-rl-blue-200 px-2 py-0.5 rounded-full">⚡ Instant Book</span>
+          )}
+          {listing.shipping && (
+            <span className="text-xs font-medium text-rl-gray bg-rl-gray-4 border border-rl-gray-3 px-2 py-0.5 rounded-full">📦 Ships</span>
+          )}
+        </div>
+      </div>
+      <div className="px-4 pb-3 pt-0 flex items-center gap-2 border-t border-rl-gray-3/60">
+        <img src={listing.ownerAvatar} alt="" className="w-6 h-6 rounded-full object-cover border border-rl-gray-3"/>
+        <span className="text-xs text-rl-gray">{listing.ownerName}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── CATEGORY PILLS ───────────────────────────────────────────────────────
+function CategoryPills({ active, onSelect }) {
+  return (
+    <div className="w-full overflow-x-auto scrollbar-hide">
+      <div className="flex items-center gap-2 pb-1" style={{minWidth:'max-content'}}>
+        {CATEGORIES.map(cat => (
+          <button key={cat.id} onClick={() => onSelect(cat.id)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all border ${
+              active===cat.id ? 'bg-rl-blue text-white border-rl-blue shadow-sm' : 'bg-white text-rl-dark-3 border-rl-gray-3 hover:border-rl-blue hover:text-rl-blue-600 hover:bg-rl-blue-50'
+            }`}>
+            <span className="text-base leading-none">{cat.icon}</span>
+            <span>{cat.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── HOW IT WORKS ─────────────────────────────────────────────────────────
+function HowItWorks({ navigate }) {
+  const [tab, setTab] = useState('renter');
+  const steps = tab === 'renter' ? [
+    {n:'01', title:'Search & Filter', desc:'Browse thousands of items by category, location, date, and price. Find exactly what you need.'},
+    {n:'02', title:'Book Instantly',  desc:'Use Instant Book or send a request. Confirm your dates and pay securely — held in escrow.'},
+    {n:'03', title:'Receive & Use',   desc:'Pick up locally or receive by shipping. Use it, return it, leave a review.'},
+  ] : [
+    {n:'01', title:'List Your Item',    desc:'Add photos, set your price and availability in minutes. Your listing goes live immediately.'},
+    {n:'02', title:'Approve & Hand Off',desc:'Approve requests or enable Instant Book. Hand off locally or ship it out.'},
+    {n:'03', title:'Get Paid',          desc:'Payment releases automatically after the rental. Every item covered by built-in insurance.'},
+  ];
+
+  return (
+    <section id="how-it-works" className="py-20 bg-rl-off-white">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-12">
+          <div className="text-xs font-semibold text-rl-blue-600 uppercase tracking-widest mb-3">How It Works</div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-rl-dark mb-4">Simple for everyone involved</h2>
+          <p className="text-rl-gray max-w-xl mx-auto">Whether you're renting or earning, Rentaleze makes the entire experience effortless.</p>
+          <div className="inline-flex items-center bg-rl-gray-4 rounded-xl p-1 mt-8 border border-rl-gray-3">
+            <button onClick={() => setTab('renter')} className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${tab==='renter'?'bg-rl-blue text-white shadow-sm':'text-rl-dark-3 hover:text-rl-blue-600'}`}>I want to Rent</button>
+            <button onClick={() => setTab('owner')} className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${tab==='owner'?'bg-rl-blue text-white shadow-sm':'text-rl-dark-3 hover:text-rl-blue-600'}`}>I want to Earn</button>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {steps.map((s,i) => (
+            <div key={i} className={`relative flex flex-col items-start p-6 rounded-2xl border ${i===1?'bg-rl-blue border-rl-blue-300 text-white':'bg-white border-rl-gray-3'}`}>
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${i===1?'bg-white/20':'bg-rl-blue-50'}`}>
+                <span className={`text-2xl font-black ${i===1?'text-white':'text-rl-blue-400'}`}>{s.n}</span>
+              </div>
+              <div className={`text-xs font-bold tracking-widest mb-1 ${i===1?'text-rl-blue-100':'text-rl-blue-500'}`}>STEP {s.n}</div>
+              <h3 className={`text-base font-bold mb-2 ${i===1?'text-white':'text-rl-dark'}`}>{s.title}</h3>
+              <p className={`text-sm leading-relaxed ${i===1?'text-rl-blue-100':'text-rl-gray'}`}>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+        <div className="text-center mt-10">
+          {tab === 'renter'
+            ? <button onClick={() => navigate('/browse')} className="bg-rl-blue text-white font-semibold px-8 py-3 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors">Start Browsing Items</button>
+            : <button className="bg-rl-blue text-white font-semibold px-8 py-3 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors">List Your First Item — Free</button>
+          }
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── TRUST SECTION ────────────────────────────────────────────────────────
+function TrustSection() {
+  const pillars = [
+    {title:'Insured Every Rental',  icon:'🛡️', highlight:true, desc:'Every transaction includes built-in damage and theft protection. Owners earn with confidence. Renters borrow without risk.'},
+    {title:'Verified Identities',   icon:'🪪',               desc:'All users complete ID verification before their first transaction. Full accountability on both sides.'},
+    {title:'Secure Payments',       icon:'🔒',               desc:'Payments held in escrow, released after successful handoff. Automatic payouts to owners after every rental.'},
+    {title:'Dual Review System',    icon:'⭐',               desc:'Owners rate renters. Renters rate owners. Both scores are visible, building trust over time.'},
+    {title:'In-App Messaging',      icon:'💬',               desc:'Coordinate directly through secure in-app chat — no need to share personal contact info.'},
+    {title:'Dispute Resolution',    icon:'⚖️',               desc:"If something goes wrong, Rentaleze's Trust & Safety team mediates for fair outcomes."},
+  ];
+  return (
+    <section className="py-20 bg-white">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-12">
+          <div className="text-xs font-semibold text-rl-blue-600 uppercase tracking-widest mb-3">Why Rentaleze</div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-rl-dark mb-4">Trust is built into everything</h2>
+          <p className="text-rl-gray max-w-xl mx-auto">Insurance, verification, and fair dispute resolution are baked into every transaction from day one.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {pillars.map((p,i) => (
+            <div key={i} className={`p-6 rounded-2xl border transition-all hover:shadow-card ${p.highlight?'bg-rl-blue-50 border-rl-blue-200':'bg-rl-gray-4/50 border-rl-gray-3'}`}>
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 text-2xl ${p.highlight?'bg-rl-blue':'bg-white border border-rl-gray-3'}`}>
+                {p.icon}
+              </div>
+              <h3 className="font-bold text-rl-dark mb-2">{p.title}</h3>
+              <p className="text-sm text-rl-gray leading-relaxed">{p.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── FOOTER ───────────────────────────────────────────────────────────────
+function Footer({ navigate }) {
+  return (
+    <footer className="bg-rl-dark text-rl-gray-2">
+      <div className="bg-rl-blue">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="text-white text-xl font-bold mb-1">Have something worth renting?</h3>
+            <p className="text-rl-blue-100 text-sm">List your item for free — no subscription required to get started.</p>
+          </div>
+          <button className="bg-white text-rl-blue-600 font-bold px-7 py-3 rounded-xl hover:bg-rl-blue-50 transition-colors shrink-0 text-sm">Start Listing Free →</button>
+        </div>
+      </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-8">
+          <div className="max-w-xs">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-rl-blue rounded-lg flex items-center justify-center"><span className="text-white font-bold text-sm">R</span></div>
+              <span className="font-bold text-white text-base">Rental<span className="text-rl-blue-300">eze</span></span>
+            </div>
+            <p className="text-sm leading-relaxed text-rl-gray-2 mb-3">The trusted marketplace to rent anything or earn from everything you own.</p>
+            <div className="text-xs text-rl-gray">🛡️ Every rental insured &nbsp;•&nbsp; 🇺🇸 US Nationwide</div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-sm">
+            {[['Renters',['Browse Items','How to Rent','Insurance','Shipping Guide']],['Owners',['List Item','Pricing Tips','Dashboard','Payout FAQ']],['Company',['About','How It Works','Press','Contact']],['Legal',['Terms','Privacy','Insurance Policy','Cookies']]].map(([section,links]) => (
+              <div key={section}>
+                <h4 className="text-xs font-bold text-white uppercase tracking-widest mb-3">{section}</h4>
+                <ul className="space-y-2">{links.map(l => <li key={l}><a href="#" className="text-rl-gray-2 hover:text-rl-blue-300 transition-colors text-xs">{l}</a></li>)}</ul>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="border-t border-white/10 mt-8 pt-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-rl-gray">
+          <span>© 2026 Rentaleze, Inc. All rights reserved.</span>
+          <span>Built with trust in Austin, TX 🤘</span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// ─── HOME PAGE ────────────────────────────────────────────────────────────
+function HomePage({ navigate }) {
+  const [activeCat, setActiveCat] = useState('all');
+  const filtered = activeCat === 'all' ? LISTINGS : LISTINGS.filter(l => l.category === activeCat);
+  const testimonials = [
+    {name:'Jordan M.',loc:'Austin, TX',avatar:'https://i.pravatar.cc/60?img=32',text:'Rented a power washer for the weekend — saved $400 vs. buying. The insurance gave me peace of mind and the owner was super responsive.'},
+    {name:'Samantha P.',loc:'Denver, CO',avatar:'https://i.pravatar.cc/60?img=48',text:'I listed my camera kit on a whim and made $600 last month while it sat in my closet. Rentaleze handles everything.'},
+    {name:'Marcus L.',loc:'Chicago, IL',avatar:'https://i.pravatar.cc/60?img=11',text:'Planned a camping trip in 2 days. Found a tent, sleeping bags, and a camp stove all from local owners. Easy, affordable, insured.'},
+  ];
+
+  return (
+    <div>
+      <Hero navigate={navigate}/>
+
+      {/* Featured listings */}
+      <section className="py-14 bg-rl-off-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-end justify-between mb-6">
+            <div>
+              <div className="text-xs font-semibold text-rl-blue-600 uppercase tracking-widest mb-2">Marketplace</div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-rl-dark">Popular Near You</h2>
+            </div>
+            <button onClick={() => navigate('/browse')} className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-rl-blue-600 hover:text-rl-blue-500 transition-colors">
+              View all <Icon.Arrow/>
+            </button>
+          </div>
+          <div className="mb-6"><CategoryPills active={activeCat} onSelect={setActiveCat}/></div>
+          {filtered.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {filtered.slice(0,8).map(l => <ListingCard key={l.id} listing={l} navigate={navigate}/>)}
+            </div>
+          ) : (
+            <div className="text-center py-16 text-rl-gray">
+              <div className="text-4xl mb-3">🔍</div>
+              <p className="font-medium">No listings in this category yet.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <HowItWorks navigate={navigate}/>
+
+      {/* Earn section */}
+      <section className="py-20 bg-rl-off-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="text-xs font-semibold text-rl-blue-600 uppercase tracking-widest mb-3">For Owners</div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-rl-dark mb-5 leading-tight">
+                Your idle assets are<br/><span className="text-rl-blue">earning nothing.</span><br/>Let's fix that.
+              </h2>
+              <p className="text-rl-gray text-base leading-relaxed mb-8">The average American household has $3,000 worth of rarely-used items. Rentaleze turns that into passive income — with built-in insurance, automatic payments, and a platform that handles everything.</p>
+              {[['💰','Avg $450/mo','earned by active owners'],['🛡️','Every rental','insured, no extra cost to you'],['⚡','$0 listing fee','forever — only pay when you earn']].map(([icon,stat,desc]) => (
+                <div key={stat} className="flex items-center gap-4 mb-4">
+                  <div className="w-10 h-10 bg-rl-blue-100 rounded-xl flex items-center justify-center text-lg shrink-0">{icon}</div>
+                  <div><span className="font-bold text-rl-dark text-sm">{stat} </span><span className="text-rl-gray text-sm">{desc}</span></div>
+                </div>
+              ))}
+              <button className="bg-rl-blue text-white font-semibold px-8 py-3 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors mt-4">Start Listing — It's Free</button>
+            </div>
+            <div className="relative">
+              <div className="bg-white rounded-3xl shadow-card-hover border border-rl-gray-3 p-7 max-w-sm mx-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <div><p className="text-xs text-rl-gray-2 mb-0.5">Monthly Earnings</p><p className="text-3xl font-extrabold text-rl-dark">$847</p></div>
+                  <div className="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-200">+23% this month</div>
+                </div>
+                <div className="flex items-end gap-1.5 h-20 mb-5">
+                  {[40,55,35,70,60,80,85,75,90,68,95,100].map((h,i) => (
+                    <div key={i} className="flex-1 rounded-t-sm" style={{height:`${h}%`,background:i===11?'#5BB3CF':'#D6EEF7'}}/>
+                  ))}
+                </div>
+                <p className="text-xs font-bold text-rl-dark uppercase tracking-wider mb-3">Your Top Items</p>
+                {[['Sony A7III Camera','$320',4],['DeWalt Drill Set','$198',11],['Camping Tent','$168',6]].map(([name,earned,days]) => (
+                  <div key={name} className="flex items-center gap-3 mb-2">
+                    <div className="flex-1 min-w-0"><p className="text-xs font-medium text-rl-dark truncate">{name}</p><p className="text-xs text-rl-gray-2">{days} rentals this month</p></div>
+                    <span className="text-xs font-bold text-rl-blue-600 shrink-0">{earned}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="absolute -top-4 -right-4 bg-rl-blue text-white text-xs font-bold px-4 py-2 rounded-2xl shadow-lg">🛡️ All Insured</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-16 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <div className="text-xs font-semibold text-rl-blue-600 uppercase tracking-widest mb-2">Reviews</div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-rl-dark">Real people, real rentals</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {testimonials.map((t,i) => (
+              <div key={i} className="bg-rl-gray-4/60 border border-rl-gray-3 rounded-2xl p-6">
+                <div className="flex gap-0.5 mb-3">{[1,2,3,4,5].map(j=><svg key={j} className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>)}</div>
+                <p className="text-sm text-rl-dark-3 leading-relaxed mb-4">"{t.text}"</p>
+                <div className="flex items-center gap-3">
+                  <img src={t.avatar} alt="" className="w-9 h-9 rounded-full object-cover"/>
+                  <div><p className="text-sm font-semibold text-rl-dark">{t.name}</p><p className="text-xs text-rl-gray-2">{t.loc}</p></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <TrustSection/>
+      <Footer navigate={navigate}/>
+    </div>
+  );
+}
+
+// ─── BROWSE PAGE ──────────────────────────────────────────────────────────
+function BrowsePage({ navigate, params }) {
+  const [filters, setFilters] = useState({
+    category: params.category || 'all',
+    minPrice: 0, maxPrice: 200,
+    instantBook: false, shipping: false, verified: false, sort: 'relevance'
+  });
+  const [searchQ, setSearchQ] = useState(params.q || '');
+  const [viewMode, setViewMode] = useState('grid');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openSection, setOpenSection] = useState({cat:true, price:true, features:true});
+
+  useEffect(() => {
+    setSearchQ(params.q || '');
+    if (params.category) setFilters(f => ({ ...f, category: params.category }));
+  }, [params.q, params.category]);
+
+  const results = useMemo(() => {
+    let list = [...LISTINGS];
+    if (searchQ) { const q = searchQ.toLowerCase(); list = list.filter(l => l.title.toLowerCase().includes(q) || l.location.toLowerCase().includes(q)); }
+    if (filters.category !== 'all') list = list.filter(l => l.category === filters.category);
+    list = list.filter(l => l.pricePerDay >= filters.minPrice && l.pricePerDay <= filters.maxPrice);
+    if (filters.instantBook) list = list.filter(l => l.badges.includes('Instant Book'));
+    if (filters.shipping) list = list.filter(l => l.shipping);
+    if (filters.verified) list = list.filter(l => l.verified);
+    if (filters.sort === 'price_asc') list.sort((a,b) => a.pricePerDay - b.pricePerDay);
+    else if (filters.sort === 'price_desc') list.sort((a,b) => b.pricePerDay - a.pricePerDay);
+    else if (filters.sort === 'rating') list.sort((a,b) => b.rating - a.rating);
+    return list;
+  }, [filters, searchQ]);
+
+  const set = (k, v) => setFilters(f => ({ ...f, [k]: v }));
+  const reset = () => setFilters({ category:'all', minPrice:0, maxPrice:200, instantBook:false, shipping:false, verified:false, sort:'relevance' });
+
+  const chips = [];
+  if (filters.category !== 'all') chips.push({ label: CATEGORIES.find(c=>c.id===filters.category)?.label, reset: () => set('category','all') });
+  if (filters.minPrice > 0 || filters.maxPrice < 200) chips.push({ label: `$${filters.minPrice}–$${filters.maxPrice}/day`, reset: () => { set('minPrice',0); set('maxPrice',200); } });
+  if (filters.instantBook) chips.push({ label:'Instant Book', reset: () => set('instantBook',false) });
+  if (filters.shipping) chips.push({ label:'Ships to me', reset: () => set('shipping',false) });
+  if (filters.verified) chips.push({ label:'Verified', reset: () => set('verified',false) });
+
+  const Sidebar = () => (
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-rl-dark text-sm">Filters</span>
+          {chips.length > 0 && <span className="bg-rl-blue text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{chips.length}</span>}
+        </div>
+        {chips.length > 0 && <button onClick={reset} className="text-xs text-rl-blue-600 font-semibold hover:underline">Clear all</button>}
+      </div>
+
+      {/* Category */}
+      <div className="border-b border-rl-gray-3 pb-4 mb-4">
+        <button onClick={() => setOpenSection(s=>({...s,cat:!s.cat}))} className="flex items-center justify-between w-full mb-3">
+          <span className="text-sm font-bold text-rl-dark">Category</span>
+          <Icon.Chevron open={openSection.cat}/>
+        </button>
+        {openSection.cat && (
+          <div className="space-y-1">
+            {CATEGORIES.map(cat => (
+              <button key={cat.id} onClick={() => set('category', cat.id)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${filters.category===cat.id?'bg-rl-blue-100 text-rl-blue-600 font-semibold':'text-rl-dark-3 hover:bg-rl-gray-4'}`}>
+                <span>{cat.icon}</span><span>{cat.label}</span>
+                {filters.category===cat.id && <span className="ml-auto"><Icon.Check/></span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Price */}
+      <div className="border-b border-rl-gray-3 pb-4 mb-4">
+        <button onClick={() => setOpenSection(s=>({...s,price:!s.price}))} className="flex items-center justify-between w-full mb-3">
+          <span className="text-sm font-bold text-rl-dark">Price Per Day</span>
+          <Icon.Chevron open={openSection.price}/>
+        </button>
+        {openSection.price && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-rl-gray-2 mb-1 block">Min</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rl-gray text-sm">$</span>
+                  <input type="number" min="0" max={filters.maxPrice} value={filters.minPrice} onChange={e=>set('minPrice',Number(e.target.value))} className="w-full pl-7 pr-3 py-2 border border-rl-gray-3 rounded-xl text-sm text-rl-dark outline-none focus:border-rl-blue"/>
+                </div>
+              </div>
+              <span className="text-rl-gray-2 text-sm mt-4">—</span>
+              <div className="flex-1">
+                <label className="text-xs text-rl-gray-2 mb-1 block">Max</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rl-gray text-sm">$</span>
+                  <input type="number" min={filters.minPrice} max="500" value={filters.maxPrice} onChange={e=>set('maxPrice',Number(e.target.value))} className="w-full pl-7 pr-3 py-2 border border-rl-gray-3 rounded-xl text-sm text-rl-dark outline-none focus:border-rl-blue"/>
+                </div>
+              </div>
+            </div>
+            <input type="range" min="0" max="200" value={filters.maxPrice} onChange={e=>set('maxPrice',Number(e.target.value))} className="w-full"/>
+            <p className="text-xs text-rl-gray-2 text-center">Up to ${filters.maxPrice}/day</p>
+          </div>
+        )}
+      </div>
+
+      {/* Features */}
+      <div>
+        <button onClick={() => setOpenSection(s=>({...s,features:!s.features}))} className="flex items-center justify-between w-full mb-3">
+          <span className="text-sm font-bold text-rl-dark">Features</span>
+          <Icon.Chevron open={openSection.features}/>
+        </button>
+        {openSection.features && (
+          <div className="space-y-3">
+            {[['instantBook','⚡ Instant Book','No owner approval needed'],['shipping','📦 Ships to me','Owner ships the item'],['verified','✅ Verified Owner','ID-verified listing owner']].map(([key,label,desc]) => (
+              <label key={key} className="flex items-start gap-3 cursor-pointer group">
+                <div className="relative mt-0.5">
+                  <input type="checkbox" checked={filters[key]} onChange={e=>set(key,e.target.checked)} className="sr-only"/>
+                  <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${filters[key]?'bg-rl-blue border-rl-blue':'border-rl-gray-3 group-hover:border-rl-blue-300'}`}>
+                    {filters[key] && <Icon.Check/>}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-rl-dark">{label}</span>
+                  <p className="text-xs text-rl-gray-2">{desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Top bar */}
+      <div className="bg-white border-b border-rl-gray-3 sticky top-16 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden flex items-center gap-2 border border-rl-gray-3 text-rl-dark-3 px-3.5 py-2 rounded-xl text-sm font-medium hover:border-rl-blue hover:text-rl-blue-600 bg-white">
+            <Icon.Filter/>Filters{chips.length>0&&<span className="bg-rl-blue text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">{chips.length}</span>}
+          </button>
+          <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            {searchQ && <span className="inline-flex items-center gap-1.5 bg-rl-dark text-white text-xs font-medium px-3 py-1.5 rounded-full shrink-0">"{searchQ}" <button onClick={()=>setSearchQ('')}><Icon.X/></button></span>}
+            {chips.map((c,i) => <button key={i} onClick={c.reset} className="inline-flex items-center gap-1.5 bg-rl-blue-100 text-rl-blue-600 border border-rl-blue-200 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-rl-blue-200 shrink-0">{c.label} <Icon.X/></button>)}
+          </div>
+          <div className="hidden lg:flex items-center gap-3 shrink-0">
+            <select value={filters.sort} onChange={e=>set('sort',e.target.value)} className="w-44 px-3 py-2 border border-rl-gray-3 rounded-xl text-sm text-rl-dark outline-none focus:border-rl-blue bg-white">
+              <option value="relevance">Best Match</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+              <option value="rating">Highest Rated</option>
+            </select>
+            <div className="flex items-center border border-rl-gray-3 rounded-xl overflow-hidden">
+              <button onClick={()=>setViewMode('grid')} className={`p-2 transition-colors ${viewMode==='grid'?'bg-rl-blue text-white':'text-rl-gray hover:bg-rl-gray-4'}`}><Icon.Grid/></button>
+              <button onClick={()=>setViewMode('list')} className={`p-2 transition-colors ${viewMode==='list'?'bg-rl-blue text-white':'text-rl-gray hover:bg-rl-gray-4'}`}><Icon.List/></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 flex gap-8">
+        {/* Mobile overlay */}
+        {sidebarOpen && <div className="lg:hidden fixed inset-0 bg-black/40 z-50" onClick={()=>setSidebarOpen(false)}/>}
+
+        {/* Sidebar */}
+        <aside className={`${sidebarOpen?'translate-x-0':'-translate-x-full lg:translate-x-0'} fixed lg:static top-0 left-0 h-full lg:h-auto z-50 lg:z-auto w-72 lg:w-64 xl:w-72 shrink-0 bg-white lg:bg-transparent shadow-2xl lg:shadow-none transition-transform duration-300 ease-in-out overflow-y-auto lg:overflow-visible p-5 lg:p-0`}>
+          <div className="lg:hidden flex items-center justify-between mb-5 pb-4 border-b border-rl-gray-3">
+            <h2 className="font-bold text-rl-dark">Filters</h2>
+            <button onClick={()=>setSidebarOpen(false)} className="text-rl-gray p-1"><Icon.X/></button>
+          </div>
+          <Sidebar/>
+        </aside>
+
+        {/* Results */}
+        <main className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h1 className="text-lg font-bold text-rl-dark">{searchQ?`Results for "${searchQ}"`:CATEGORIES.find(c=>c.id===filters.category)?.label||'All Items'}</h1>
+              <p className="text-sm text-rl-gray mt-0.5">{results.length} {results.length===1?'item':'items'} available</p>
+            </div>
+          </div>
+
+          {results.length === 0 ? (
+            <div className="text-center py-24">
+              <div className="text-5xl mb-4">🔍</div>
+              <h3 className="text-lg font-bold text-rl-dark mb-2">No results found</h3>
+              <p className="text-rl-gray text-sm mb-6">Try adjusting your filters or search terms.</p>
+              <button onClick={()=>{reset();setSearchQ('');}} className="bg-rl-blue text-white font-semibold px-6 py-2.5 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors">Clear all filters</button>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+              {results.map(l => <ListingCard key={l.id} listing={l} navigate={navigate}/>)}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {results.map(l => (
+                <div key={l.id} className="bg-white rounded-2xl shadow-card border border-rl-gray-3/60 hover:shadow-card-hover transition-all flex gap-4 p-4 cursor-pointer" onClick={() => navigate(`/listing/${l.id}`)}>
+                  <div className="w-36 h-28 rounded-xl overflow-hidden shrink-0 bg-rl-gray-4">
+                    <img src={l.image} alt={l.title} className="w-full h-full object-cover" loading="lazy"/>
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-semibold text-rl-dark text-sm line-clamp-1 hover:text-rl-blue-600 mb-1">{l.title}</h3>
+                      <div className="flex items-center gap-3 text-xs text-rl-gray mb-2">
+                        <span className="flex items-center gap-1"><Icon.Star/><strong className="text-rl-dark-3">{l.rating}</strong> ({l.reviewCount})</span>
+                        <span>{l.location}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {l.badges.includes('Insured') && <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">🛡️ Insured</span>}
+                        {l.badges.includes('Instant Book') && <span className="text-xs font-medium text-rl-blue-600 bg-rl-blue-50 border border-rl-blue-200 px-2 py-0.5 rounded-full">⚡ Instant Book</span>}
+                        {l.shipping && <span className="text-xs font-medium text-rl-gray bg-rl-gray-4 border border-rl-gray-3 px-2 py-0.5 rounded-full">📦 Ships</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-2">
+                        <img src={l.ownerAvatar} alt="" className="w-6 h-6 rounded-full"/>
+                        <span className="text-xs text-rl-gray">{l.ownerName}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-base font-bold text-rl-dark"><span className="text-rl-blue-600">${l.pricePerDay}</span><span className="text-xs font-normal text-rl-gray"> / day</span></span>
+                        <button className="bg-rl-blue text-white text-xs font-semibold px-4 py-1.5 rounded-xl hover:bg-rl-blue-500 transition-colors">Book</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+      <Footer navigate={navigate}/>
+    </div>
+  );
+}
+
+// ─── LISTING DETAIL (PHASE 2) ──────────────────────────────────────────────
+function ImageGallery({ images, title }) {
+  const [active, setActive] = useState(0);
+  const [lb, setLb] = useState(false);
+  const prev = () => setActive(i => (i - 1 + images.length) % images.length);
+  const next = () => setActive(i => (i + 1) % images.length);
+  useEffect(() => {
+    if (!lb) return;
+    const h = e => { if (e.key === 'Escape') setLb(false); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [lb]);
+  return (
+    <>
+      {/* Desktop 2-col grid */}
+      <div className="hidden md:grid grid-cols-2 gap-2 rounded-2xl overflow-hidden h-[400px]">
+        <div className="cursor-pointer group overflow-hidden" onClick={() => { setActive(0); setLb(true); }}>
+          <img src={images[0]} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+        </div>
+        <div className="grid grid-rows-2 gap-2 h-full">
+          {images.slice(1, 3).map((img, i) => (
+            <div key={i} className="relative cursor-pointer group overflow-hidden" onClick={() => { setActive(i+1); setLb(true); }}>
+              <img src={img} alt={`${title} ${i+2}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+              {i===1 && images.length>3 && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">+{images.length-3} more</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Mobile single image */}
+      <div className="md:hidden relative rounded-2xl overflow-hidden h-72 bg-rl-gray-4">
+        <img src={images[active]} alt={title} className="w-full h-full object-cover"/>
+        {images.length > 1 && (
+          <>
+            <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-md">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-md">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+            </button>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+              {images.map((_,i) => <button key={i} onClick={() => setActive(i)} className={`rounded-full transition-all ${active===i?'w-5 h-2 bg-white':'w-2 h-2 bg-white/60'}`}/>)}
+            </div>
+          </>
+        )}
+      </div>
+      {/* Lightbox */}
+      {lb && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={() => setLb(false)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white text-3xl w-10 h-10 flex items-center justify-center" onClick={() => setLb(false)}>✕</button>
+          <button className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white" onClick={e => { e.stopPropagation(); prev(); }}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <img src={images[active]} alt={title} className="max-h-[85vh] max-w-[85vw] object-contain rounded-xl" onClick={e => e.stopPropagation()}/>
+          <button className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white" onClick={e => { e.stopPropagation(); next(); }}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+          </button>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            {images.map((_,i) => <button key={i} onClick={e => { e.stopPropagation(); setActive(i); }} className={`rounded-full transition-all ${active===i?'w-6 h-2 bg-white':'w-2 h-2 bg-white/40'}`}/>)}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function BookingWidget({ listing, onAddToCart }) {
+  const today = new Date();
+  const fmt = d => d.toISOString().split('T')[0];
+  const t1 = new Date(today); t1.setDate(today.getDate()+1);
+  const t3 = new Date(today); t3.setDate(today.getDate()+3);
+  const [start, setStart] = useState(fmt(t1));
+  const [end, setEnd] = useState(fmt(t3));
+  const [qty, setQty] = useState(1);
+  const [fulfillment, setFulfillment] = useState(listing.fulfillment === 'shipping' ? 'shipping' : 'pickup');
+  const [added, setAdded] = useState(false);
+
+  const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000));
+  const base = days * listing.pricePerDay * qty;
+  const ins = Math.round(base * 0.08);
+  const svc = Math.round(base * 0.12);
+  const shippingFee = fulfillment === 'shipping' ? 24 : 0;
+  const total = base + ins + svc + shippingFee;
+
+  const handleAddToCart = () => {
+    onAddToCart({ listingId:listing.id, title:listing.title, image:listing.image, ownerName:listing.ownerName, pricePerDay:listing.pricePerDay, start, end, days, qty, fulfillment, base, ins, svc, shippingFee, total });
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2500);
+  };
+
+  if (added) return (
+    <div className="bg-white border border-rl-gray-3 rounded-2xl p-6 shadow-card text-center">
+      <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <h3 className="text-lg font-extrabold text-rl-dark mb-1">Added to Cart!</h3>
+      <p className="text-sm text-rl-gray mb-5">{listing.title} has been added to your cart.</p>
+      <button onClick={() => setAdded(false)} className="w-full border border-rl-blue text-rl-blue font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-rl-blue-50 transition-colors">Continue Browsing</button>
+    </div>
+  );
+
+  return (
+    <div className="bg-white border border-rl-gray-3 rounded-2xl shadow-card overflow-hidden">
+      <div className="px-6 pt-5 pb-4 border-b border-rl-gray-3">
+        <div className="flex items-baseline gap-1">
+          <span className="text-2xl font-extrabold text-rl-dark">${listing.pricePerDay}</span>
+          <span className="text-rl-gray text-sm">/ day{qty > 1 ? ` × ${qty} units` : ''}</span>
+        </div>
+        <div className="flex items-center gap-1 mt-0.5">
+          <Icon.Star/><span className="text-sm font-semibold text-rl-dark">{listing.rating}</span>
+          <span className="text-xs text-rl-gray-2">({listing.reviewCount} reviews)</span>
+        </div>
+      </div>
+      <div className="px-6 py-4 space-y-4">
+
+        {/* Dates */}
+        <div>
+          <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-2">Rental Dates</label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-xs text-rl-gray-2 mb-1">Start</p>
+              <input type="date" value={start} min={fmt(t1)}
+                onChange={e => { setStart(e.target.value); const ne=new Date(e.target.value); ne.setDate(ne.getDate()+Math.max(1,days)); setEnd(fmt(ne)); }}
+                className="w-full border border-rl-gray-3 rounded-xl px-3 py-2 text-sm text-rl-dark focus:outline-none focus:border-rl-blue focus:ring-2 focus:ring-rl-blue-200"/>
+            </div>
+            <div>
+              <p className="text-xs text-rl-gray-2 mb-1">End</p>
+              <input type="date" value={end} min={start}
+                onChange={e => setEnd(e.target.value)}
+                className="w-full border border-rl-gray-3 rounded-xl px-3 py-2 text-sm text-rl-dark focus:outline-none focus:border-rl-blue focus:ring-2 focus:ring-rl-blue-200"/>
+            </div>
+          </div>
+          <p className="text-xs text-rl-blue-600 font-medium mt-2 text-center">{days} day{days!==1?'s':''} selected</p>
+        </div>
+
+        {/* Quantity */}
+        <div>
+          <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-2">Quantity</label>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setQty(q => Math.max(1,q-1))} className="w-9 h-9 rounded-xl border border-rl-gray-3 flex items-center justify-center text-rl-dark font-bold hover:border-rl-blue hover:text-rl-blue transition-colors text-lg">−</button>
+            <span className="text-base font-bold text-rl-dark min-w-[2rem] text-center">{qty}</span>
+            <button onClick={() => setQty(q => q+1)} className="w-9 h-9 rounded-xl border border-rl-gray-3 flex items-center justify-center text-rl-dark font-bold hover:border-rl-blue hover:text-rl-blue transition-colors text-lg">+</button>
+            <span className="text-xs text-rl-gray-2">unit{qty!==1?'s':''}</span>
+          </div>
+        </div>
+
+        {/* Fulfillment */}
+        {listing.fulfillment === 'both' && (
+          <div>
+            <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-2">How to Receive</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setFulfillment('pickup')} className={`py-2.5 px-3 rounded-xl border text-sm font-semibold flex items-center justify-center gap-1.5 transition-all ${fulfillment==='pickup' ? 'border-rl-blue bg-rl-blue-50 text-rl-blue' : 'border-rl-gray-3 text-rl-dark hover:border-rl-blue'}`}>📍 Local Pickup</button>
+              <button onClick={() => setFulfillment('shipping')} className={`py-2.5 px-3 rounded-xl border text-sm font-semibold flex items-center justify-center gap-1.5 transition-all ${fulfillment==='shipping' ? 'border-rl-blue bg-rl-blue-50 text-rl-blue' : 'border-rl-gray-3 text-rl-dark hover:border-rl-blue'}`}>📦 Ship to Me</button>
+            </div>
+          </div>
+        )}
+        {listing.fulfillment === 'pickup' && (
+          <div className="flex items-center gap-2 py-2 px-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <span className="text-base">📍</span><span className="text-xs font-medium text-amber-800">Local Pickup Only — {listing.location}</span>
+          </div>
+        )}
+        {listing.fulfillment === 'shipping' && (
+          <div className="flex items-center gap-2 py-2 px-3 bg-blue-50 border border-blue-200 rounded-xl">
+            <span className="text-base">📦</span><span className="text-xs font-medium text-blue-800">Shipping Only — prepaid return label included</span>
+          </div>
+        )}
+
+        {/* Price breakdown */}
+        <div className="space-y-2 pt-1">
+          <div className="flex justify-between text-sm"><span className="text-rl-gray">${listing.pricePerDay} × {days} day{days!==1?'s':''}{qty>1?` × ${qty}`:''}</span><span className="text-rl-dark font-medium">${base}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-rl-gray">🛡️ Insurance fee</span><span className="text-rl-dark font-medium">${ins}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-rl-gray">Service fee</span><span className="text-rl-dark font-medium">${svc}</span></div>
+          {shippingFee > 0 && <div className="flex justify-between text-sm"><span className="text-rl-gray">📦 Shipping (2 labels)</span><span className="text-rl-dark font-medium">${shippingFee}</span></div>}
+          <div className="flex justify-between font-bold pt-2 border-t border-rl-gray-3"><span className="text-rl-dark">Total</span><span className="text-rl-dark">${total}</span></div>
+        </div>
+
+        <button onClick={handleAddToCart} className="w-full bg-rl-blue hover:bg-rl-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+          🛒 Add to Cart
+        </button>
+        <p className="text-xs text-center text-rl-gray-2">You won't be charged until checkout</p>
+        <button className="w-full border border-rl-blue text-rl-blue font-semibold py-2.5 rounded-xl text-sm hover:bg-rl-blue-50 transition-colors">
+          Message {listing.ownerName.split(' ')[0]}
+        </button>
+        <div className="flex items-start gap-2 pt-1">
+          <svg className="w-4 h-4 text-rl-blue shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          <p className="text-xs text-rl-gray-2 leading-relaxed">Every rental includes <span className="font-semibold text-rl-dark">damage insurance</span> and is backed by the <span className="font-semibold text-rl-dark">Rentaleze Guarantee</span>. Free cancellation up to 48 hrs before rental.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ListingDetail({ navigate, id, onAddToCart }) {
+  const [wishlist, setWishlist] = useState(false);
+  const [mobileBook, setMobileBook] = useState(false);
+  const [showAllReviews, setShowAllReviews] = useState(false);
+
+  const listing = LISTINGS.find(l => l.id === Number(id));
+  const details = LISTING_DETAILS[Number(id)];
+
+  if (!listing || !details) return (
+    <div className="min-h-screen flex items-center justify-center bg-rl-off-white">
+      <div className="text-center px-4">
+        <div className="text-4xl mb-3">🔍</div>
+        <h2 className="text-xl font-extrabold text-rl-dark mb-2">Listing not found</h2>
+        <p className="text-rl-gray text-sm mb-6">This item may no longer be available.</p>
+        <button onClick={() => navigate('/browse')} className="bg-rl-blue text-white font-semibold px-6 py-2.5 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors">Browse Listings</button>
+      </div>
+    </div>
+  );
+
+  const reviewsToShow = showAllReviews ? details.reviews : details.reviews.slice(0, 3);
+  const similar = LISTINGS.filter(l => l.id !== listing.id && l.category === listing.category).slice(0, 4);
+
+  return (
+    <div className="bg-rl-off-white min-h-screen pb-28 lg:pb-0">
+      {/* Breadcrumb */}
+      <div className="bg-white border-b border-rl-gray-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+          <nav className="flex items-center gap-2 text-xs text-rl-gray-2">
+            <button onClick={() => navigate('/')} className="hover:text-rl-blue transition-colors">Home</button>
+            <span>/</span>
+            <button onClick={() => navigate('/browse')} className="hover:text-rl-blue transition-colors">Browse</button>
+            <span>/</span>
+            <span className="text-rl-dark font-medium truncate max-w-[200px]">{listing.title}</span>
+          </nav>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+          {/* Left column */}
+          <div className="lg:col-span-7 space-y-8">
+
+            <ImageGallery images={details.images} title={listing.title}/>
+
+            {/* Title & meta */}
+            <div>
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-rl-dark leading-tight flex-1">{listing.title}</h1>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => setWishlist(w => !w)} className="w-9 h-9 rounded-full border border-rl-gray-3 flex items-center justify-center bg-white hover:border-rl-gray-2 transition-colors">
+                    <Icon.Heart filled={wishlist}/>
+                  </button>
+                  <button className="w-9 h-9 rounded-full border border-rl-gray-3 flex items-center justify-center bg-white hover:border-rl-gray-2 transition-colors text-rl-gray">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
+                <div className="flex items-center gap-1"><Icon.Star/><span className="font-bold text-rl-dark text-sm">{listing.rating}</span><span className="text-xs text-rl-gray-2">({listing.reviewCount} reviews)</span></div>
+                <div className="flex items-center gap-1 text-rl-gray-2"><Icon.Location/><span className="text-sm">{listing.location} · {listing.distance} away</span></div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {listing.verified && <span className="inline-flex items-center gap-1.5 bg-rl-blue-100 text-rl-blue-600 text-xs font-semibold px-3 py-1.5 rounded-full">✓ Verified Owner</span>}
+                {listing.badges.includes('Insured') && <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-emerald-200">🛡️ Insured</span>}
+                {listing.badges.includes('Instant Book') && <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-200">⚡ Instant Book</span>}
+                {listing.fulfillment !== 'pickup' && <span className="inline-flex items-center gap-1.5 bg-purple-50 text-purple-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-purple-200">📦 {listing.fulfillment === 'both' ? 'Pickup or Ship' : 'Ships to You'}</span>}
+              </div>
+            </div>
+
+            <hr className="border-rl-gray-3"/>
+
+            {/* Description */}
+            <div>
+              <h2 className="text-lg font-extrabold text-rl-dark mb-3">About this item</h2>
+              <p className="text-rl-dark-3 leading-relaxed">{details.description}</p>
+            </div>
+
+            {/* What's included */}
+            <div>
+              <h2 className="text-lg font-extrabold text-rl-dark mb-4">What's included</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {details.includes.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2.5 bg-white border border-rl-gray-3 rounded-xl px-4 py-2.5">
+                    <svg className="w-4 h-4 text-rl-blue shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/></svg>
+                    <span className="text-sm text-rl-dark">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Specifications */}
+            <div>
+              <h2 className="text-lg font-extrabold text-rl-dark mb-4">Specifications</h2>
+              <div className="bg-white border border-rl-gray-3 rounded-2xl overflow-hidden">
+                {details.specs.map(([key, val], i) => (
+                  <div key={key} className={`flex items-center px-5 py-3 ${i < details.specs.length-1 ? 'border-b border-rl-gray-3' : ''}`}>
+                    <span className="text-sm text-rl-gray w-40 shrink-0">{key}</span>
+                    <span className="text-sm font-semibold text-rl-dark">{val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Rental rules */}
+            <div>
+              <h2 className="text-lg font-extrabold text-rl-dark mb-4">Rental rules</h2>
+              <div className="bg-white border border-rl-gray-3 rounded-2xl p-5 space-y-3">
+                {details.rules.map((rule, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-5 h-5 bg-rl-gray-4 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-xs font-bold text-rl-gray">{i+1}</span>
+                    </div>
+                    <p className="text-sm text-rl-dark-3">{rule}</p>
+                  </div>
+                ))}
+                <div className="pt-2 mt-2 border-t border-rl-gray-3">
+                  <p className="text-xs text-rl-gray-2">📋 Free cancellation up to 48 hours before rental start.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Owner */}
+            <div>
+              <h2 className="text-lg font-extrabold text-rl-dark mb-4">About the owner</h2>
+              <div className="border border-rl-gray-3 rounded-2xl p-6 bg-white">
+                <div className="flex items-start gap-4 mb-5">
+                  <div className="relative shrink-0">
+                    <img src={listing.ownerAvatar} alt={listing.ownerName} className="w-16 h-16 rounded-full object-cover border-2 border-rl-blue-100"/>
+                    {listing.verified && (
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-rl-blue rounded-full flex items-center justify-center border-2 border-white">
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-extrabold text-rl-dark">{listing.ownerName}</h3>
+                      {listing.verified && <span className="bg-rl-blue-100 text-rl-blue-600 text-xs font-semibold px-2 py-0.5 rounded-full">Verified</span>}
+                    </div>
+                    <p className="text-xs text-rl-gray-2 mt-0.5">Member since {details.ownerSince} · {details.ownerTotalReviews} reviews</p>
+                    <div className="flex items-center gap-1 mt-1"><Icon.Star/><span className="text-sm font-semibold text-rl-dark">{listing.rating}</span><span className="text-xs text-rl-gray-2">avg rating</span></div>
+                  </div>
+                </div>
+                <p className="text-sm text-rl-dark-3 leading-relaxed mb-5">"{details.ownerBio}"</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[['Response rate', details.ownerResponseRate+'%'], ['Response time', details.ownerResponseTime]].map(([label, val]) => (
+                    <div key={label} className="bg-rl-off-white rounded-xl px-4 py-3 text-center">
+                      <p className="text-sm font-extrabold text-rl-dark">{val}</p>
+                      <p className="text-xs text-rl-gray-2 mt-0.5">{label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Location */}
+            <div>
+              <h2 className="text-lg font-extrabold text-rl-dark mb-4">Location <span className="text-sm text-rl-gray font-normal ml-1">{listing.location} · {listing.distance} from you</span></h2>
+              <div className="bg-white border border-rl-gray-3 rounded-2xl h-44 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-3xl mb-2">📍</div>
+                  <p className="text-sm text-rl-gray font-medium">{listing.location}</p>
+                  <p className="text-xs text-rl-gray-2 mt-1">Exact address provided after booking</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Reviews */}
+            <div>
+              <h2 className="text-lg font-extrabold text-rl-dark mb-5">Reviews</h2>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="text-4xl font-black text-rl-dark">{listing.rating.toFixed(1)}</div>
+                <div>
+                  <div className="flex gap-0.5 mb-1">{[1,2,3,4,5].map(i => <svg key={i} className={`w-4 h-4 ${i<=Math.round(listing.rating)?'text-amber-400':'text-rl-gray-3'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>)}</div>
+                  <p className="text-sm text-rl-gray">{listing.reviewCount} reviews</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {reviewsToShow.map((r, i) => (
+                  <div key={i} className="bg-white border border-rl-gray-3 rounded-2xl p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <img src={r.avatar} alt={r.name} className="w-10 h-10 rounded-full object-cover"/>
+                      <div><p className="text-sm font-semibold text-rl-dark">{r.name}</p><p className="text-xs text-rl-gray-2">{r.date}</p></div>
+                      <div className="ml-auto flex gap-0.5">{[1,2,3,4,5].map(j => <svg key={j} className={`w-3.5 h-3.5 ${j<=r.rating?'text-amber-400':'text-rl-gray-3'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>)}</div>
+                    </div>
+                    <p className="text-sm text-rl-dark-3 leading-relaxed">"{r.text}"</p>
+                  </div>
+                ))}
+              </div>
+              {details.reviews.length > 3 && !showAllReviews && (
+                <button onClick={() => setShowAllReviews(true)} className="mt-5 border border-rl-blue text-rl-blue font-semibold px-6 py-2.5 rounded-xl text-sm hover:bg-rl-blue-50 transition-colors">
+                  Show all {details.reviews.length} reviews
+                </button>
+              )}
+            </div>
+
+            {/* Similar listings */}
+            {similar.length > 0 && (
+              <div className="mt-8 pt-8 border-t border-rl-gray-3">
+                <h2 className="text-xl font-extrabold text-rl-dark mb-5">Similar items nearby</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {similar.map(item => (
+                    <button key={item.id} onClick={() => { navigate(`/listing/${item.id}`); window.scrollTo(0,0); }}
+                      className="bg-white border border-rl-gray-3 rounded-2xl overflow-hidden hover:shadow-card-hover transition-shadow text-left group">
+                      <div className="aspect-square overflow-hidden">
+                        <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-xs font-semibold text-rl-dark line-clamp-1 mb-1">{item.title}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-extrabold text-rl-blue">${item.pricePerDay}<span className="text-xs font-normal text-rl-gray">/day</span></span>
+                          <div className="flex items-center gap-0.5"><Icon.Star/><span className="text-xs font-semibold text-rl-dark">{item.rating}</span></div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right column — sticky booking card */}
+          <div className="hidden lg:block lg:col-span-5">
+            <div className="sticky top-24">
+              <BookingWidget listing={listing} onAddToCart={onAddToCart}/>
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                {[['🛡️','Insured'],['💳','Secure Pay'],['↩️','Free Cancel']].map(([icon,label]) => (
+                  <div key={label} className="bg-white border border-rl-gray-3 rounded-xl py-3 px-2">
+                    <div className="text-lg mb-1">{icon}</div>
+                    <p className="text-xs font-semibold text-rl-dark">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Mobile sticky booking bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-rl-gray-3 px-4 py-3 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <div className="flex-1">
+          <p className="text-lg font-extrabold text-rl-dark">${listing.pricePerDay}<span className="text-sm font-medium text-rl-gray">/day</span></p>
+          <div className="flex items-center gap-1"><Icon.Star/><span className="text-xs font-semibold text-rl-dark">{listing.rating}</span><span className="text-xs text-rl-gray-2">({listing.reviewCount})</span></div>
+        </div>
+        <button onClick={() => setMobileBook(true)} className="bg-rl-blue text-white font-bold px-8 py-3 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors">
+          {listing.badges.includes('Instant Book') ? '⚡ Book Now' : 'Check Availability'}
+        </button>
+      </div>
+
+      {/* Mobile booking modal */}
+      {mobileBook && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileBook(false)}/>
+          <div className="relative w-full max-w-lg bg-white rounded-t-3xl p-6 pb-8 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-rl-dark">Book this Item</h3>
+              <button onClick={() => setMobileBook(false)} className="w-8 h-8 rounded-full bg-rl-gray-4 flex items-center justify-center text-rl-gray"><Icon.X/></button>
+            </div>
+            <BookingWidget listing={listing} onAddToCart={onAddToCart}/>
+          </div>
+        </div>
+      )}
+
+      <Footer navigate={navigate}/>
+    </div>
+  );
+}
+
+// ─── CART DRAWER ──────────────────────────────────────────────────────────
+function CartDrawer({ cart, onClose, onRemove, navigate }) {
+  const cartTotal = cart.reduce((sum, item) => sum + item.total, 0);
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={onClose}/>
+      <div className="w-full max-w-sm bg-white flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-rl-gray-3">
+          <h2 className="font-extrabold text-rl-dark text-lg">Your Cart ({cart.length})</h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-rl-gray-4 flex items-center justify-center hover:bg-rl-gray-3 transition-colors"><Icon.X/></button>
+        </div>
+        {cart.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="text-5xl mb-4">🛒</div>
+            <h3 className="font-bold text-rl-dark mb-2">Your cart is empty</h3>
+            <p className="text-sm text-rl-gray mb-6">Browse listings and add items to rent.</p>
+            <button onClick={() => { onClose(); navigate('/browse'); }} className="bg-rl-blue text-white font-semibold px-5 py-2.5 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors">Browse Items</button>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto divide-y divide-rl-gray-3">
+              {cart.map((item, i) => (
+                <div key={i} className="p-4 flex gap-3">
+                  <img src={item.image} alt={item.title} className="w-20 h-16 object-cover rounded-xl shrink-0"/>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-rl-dark text-sm leading-tight truncate">{item.title}</p>
+                    <p className="text-xs text-rl-gray mt-0.5">{item.days} day{item.days!==1?'s':''} · {item.qty} unit{item.qty!==1?'s':''} · {item.fulfillment==='shipping' ? '📦 Shipped' : '📍 Pickup'}</p>
+                    <p className="text-xs text-rl-gray-2 mt-0.5">{item.start} → {item.end}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-sm font-bold text-rl-dark">${item.total}</span>
+                      <button onClick={() => onRemove(i)} className="text-xs text-red-500 hover:text-red-700 font-medium">Remove</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-5 border-t border-rl-gray-3 space-y-3">
+              <div className="flex justify-between font-extrabold text-rl-dark">
+                <span>Subtotal</span><span>${cartTotal}</span>
+              </div>
+              <button onClick={() => { onClose(); navigate('/checkout'); }} className="w-full bg-rl-blue hover:bg-rl-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-colors">Proceed to Checkout →</button>
+              <button onClick={() => { onClose(); navigate('/browse'); }} className="w-full border border-rl-gray-3 text-rl-dark font-medium py-2.5 rounded-xl text-sm hover:bg-rl-gray-4 transition-colors">Continue Shopping</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── CHECKOUT PAGE ────────────────────────────────────────────────────────
+function CheckoutPage({ cart, onRemove, navigate, onOrderComplete }) {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', phone:'', address:'', city:'', state:'', zip:'', intendedUse:'', agreedToTerms:false });
+  const [errors, setErrors] = useState({});
+  const hasShipping = cart.some(item => item.fulfillment === 'shipping');
+  const cartTotal = cart.reduce((sum, item) => sum + item.total, 0);
+  const upd = (k, v) => { setForm(f => ({...f, [k]: v})); if (errors[k]) setErrors(e => ({...e, [k]: null})); };
+
+  if (cart.length === 0) return (
+    <div className="min-h-screen flex items-center justify-center bg-rl-off-white">
+      <div className="text-center px-4">
+        <div className="text-4xl mb-3">🛒</div>
+        <h2 className="text-xl font-extrabold text-rl-dark mb-2">Your cart is empty</h2>
+        <button onClick={() => navigate('/browse')} className="bg-rl-blue text-white font-semibold px-6 py-2.5 rounded-xl text-sm mt-4 hover:bg-rl-blue-500 transition-colors">Browse Listings</button>
+      </div>
+    </div>
+  );
+
+  const validate = () => {
+    const e = {};
+    if (!form.firstName.trim()) e.firstName = 'Required';
+    if (!form.lastName.trim()) e.lastName = 'Required';
+    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Valid email required';
+    if (!form.phone.trim()) e.phone = 'Required';
+    if (hasShipping) {
+      if (!form.address.trim()) e.address = 'Required for shipped items';
+      if (!form.city.trim()) e.city = 'Required';
+      if (!form.state.trim()) e.state = 'Required';
+      if (!form.zip.trim()) e.zip = 'Required';
+    }
+    if (!form.intendedUse.trim() || form.intendedUse.trim().length < 20) e.intendedUse = 'Please describe your intended use (min 20 characters)';
+    if (!form.agreedToTerms) e.agreedToTerms = 'You must agree to the rental terms to continue';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (validate()) { setStep(2); if (onOrderComplete) onOrderComplete(); }
+  };
+
+  if (step === 2) return (
+    <div className="min-h-screen bg-rl-off-white py-12 px-4">
+      <div className="max-w-lg mx-auto">
+        <div className="bg-white rounded-2xl shadow-card p-8 text-center mb-6">
+          <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-5">
+            <svg className="w-10 h-10 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <h2 className="text-2xl font-extrabold text-rl-dark mb-2">Booking Confirmed!</h2>
+          <p className="text-rl-gray text-sm mb-6">Your rental request has been submitted. Confirmation sent to <strong>{form.email}</strong>.</p>
+          {hasShipping && (
+            <div className="bg-rl-blue-50 border border-rl-blue-200 rounded-xl p-5 text-left mb-6">
+              <h3 className="font-bold text-rl-dark mb-3 flex items-center gap-2"><span>📦</span> Shipping Labels Ready</h3>
+              <p className="text-xs text-rl-dark-3 mb-3">Two prepaid shipping labels generated via <strong>EasyPost</strong> for each shipped item:</p>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-rl-blue-200">
+                  <div className="w-8 h-8 bg-rl-blue rounded-lg flex items-center justify-center shrink-0"><span className="text-white text-xs font-bold">1</span></div>
+                  <div><p className="text-sm font-semibold text-rl-dark">Outbound Label</p><p className="text-xs text-rl-gray">Owner ships to you · USPS Priority Mail</p></div>
+                  <button className="ml-auto text-xs font-semibold text-rl-blue hover:underline shrink-0">Download ↓</button>
+                </div>
+                <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-rl-blue-200">
+                  <div className="w-8 h-8 bg-rl-blue rounded-lg flex items-center justify-center shrink-0"><span className="text-white text-xs font-bold">2</span></div>
+                  <div><p className="text-sm font-semibold text-rl-dark">Return Label</p><p className="text-xs text-rl-gray">You ship back to owner · USPS Priority Mail</p></div>
+                  <button className="ml-auto text-xs font-semibold text-rl-blue hover:underline shrink-0">Download ↓</button>
+                </div>
+              </div>
+              <p className="text-xs text-rl-gray-2 mt-3">Labels also emailed to {form.email} · Powered by <strong>EasyPost</strong></p>
+            </div>
+          )}
+          <div className="bg-rl-gray-4 rounded-xl p-4 text-left mb-6">
+            <h3 className="font-bold text-rl-dark text-sm mb-3">Order Summary</h3>
+            {cart.map((item, i) => (
+              <div key={i} className="flex justify-between text-sm py-1.5 border-b border-rl-gray-3 last:border-0">
+                <span className="text-rl-dark truncate mr-3">{item.title} ×{item.qty}</span>
+                <span className="text-rl-dark font-semibold shrink-0">${item.total}</span>
+              </div>
+            ))}
+            <div className="flex justify-between font-extrabold text-rl-dark pt-2 mt-1 text-base">
+              <span>Total Charged</span><span>${cartTotal}</span>
+            </div>
+          </div>
+          <button onClick={() => navigate('/')} className="w-full bg-rl-blue text-white font-bold py-3 rounded-xl text-sm hover:bg-rl-blue-500 transition-colors">Back to Home</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const inputCls = (k) => `w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rl-blue-200 focus:border-rl-blue ${errors[k] ? 'border-red-400' : 'border-rl-gray-3'}`;
+
+  return (
+    <div className="min-h-screen bg-rl-off-white py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        <button onClick={() => navigate('/browse')} className="flex items-center gap-1 text-rl-gray text-sm mb-6 hover:text-rl-dark transition-colors">← Continue Shopping</button>
+        <h1 className="text-2xl font-extrabold text-rl-dark mb-6">Checkout</h1>
+        <div className="grid lg:grid-cols-5 gap-6">
+
+          {/* Left — forms */}
+          <div className="lg:col-span-3 space-y-5">
+
+            {/* Renter info */}
+            <div className="bg-white rounded-2xl shadow-card p-6">
+              <h2 className="font-extrabold text-rl-dark mb-4">Your Information</h2>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">First Name</label>
+                  <input value={form.firstName} onChange={e=>upd('firstName',e.target.value)} className={inputCls('firstName')} placeholder="Jane"/>
+                  {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Last Name</label>
+                  <input value={form.lastName} onChange={e=>upd('lastName',e.target.value)} className={inputCls('lastName')} placeholder="Smith"/>
+                  {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Email</label>
+                  <input type="email" value={form.email} onChange={e=>upd('email',e.target.value)} className={inputCls('email')} placeholder="jane@example.com"/>
+                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Phone</label>
+                  <input type="tel" value={form.phone} onChange={e=>upd('phone',e.target.value)} className={inputCls('phone')} placeholder="(555) 000-0000"/>
+                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* Shipping address */}
+            {hasShipping && (
+              <div className="bg-white rounded-2xl shadow-card p-6">
+                <h2 className="font-extrabold text-rl-dark mb-1">Shipping Address</h2>
+                <p className="text-xs text-rl-gray mb-4">One or more items will be shipped. Prepaid return labels are included via EasyPost.</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Street Address</label>
+                    <input value={form.address} onChange={e=>upd('address',e.target.value)} className={inputCls('address')} placeholder="123 Main St, Apt 4B"/>
+                    {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-1">
+                      <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">City</label>
+                      <input value={form.city} onChange={e=>upd('city',e.target.value)} className={inputCls('city')} placeholder="Austin"/>
+                      {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">State</label>
+                      <input value={form.state} onChange={e=>upd('state',e.target.value)} className={inputCls('state')} placeholder="TX"/>
+                      {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state}</p>}
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">ZIP</label>
+                      <input value={form.zip} onChange={e=>upd('zip',e.target.value)} className={inputCls('zip')} placeholder="78701"/>
+                      {errors.zip && <p className="text-red-500 text-xs mt-1">{errors.zip}</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Intended use */}
+            <div className="bg-white rounded-2xl shadow-card p-6">
+              <h2 className="font-extrabold text-rl-dark mb-1">Intended Use <span className="text-red-500">*</span></h2>
+              <p className="text-xs text-rl-gray mb-3">Tell the owner exactly what you plan to use this item for. This is required and shared with the owner before they approve your request.</p>
+              <textarea value={form.intendedUse} onChange={e=>upd('intendedUse',e.target.value)} rows={4}
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-rl-blue-200 focus:border-rl-blue ${errors.intendedUse ? 'border-red-400' : 'border-rl-gray-3'}`}
+                placeholder="e.g. I'm building a deck this weekend and need the drill for mounting boards. I have experience with power tools and will keep everything clean and return it in perfect condition."/>
+              <div className="flex justify-between mt-1">
+                {errors.intendedUse ? <p className="text-red-500 text-xs">{errors.intendedUse}</p> : <span/>}
+                <p className={`text-xs ${form.intendedUse.length < 20 ? 'text-rl-gray-2' : 'text-emerald-600'}`}>{form.intendedUse.length} / 20+ chars</p>
+              </div>
+            </div>
+
+            {/* Rental Terms */}
+            <div className="bg-white rounded-2xl shadow-card p-6">
+              <h2 className="font-extrabold text-rl-dark mb-3">Rental Terms</h2>
+              <div className="bg-rl-gray-4 rounded-xl p-4 text-xs text-rl-dark-3 leading-relaxed space-y-2.5 max-h-52 overflow-y-auto mb-4 border border-rl-gray-3">
+                <p className="font-bold text-rl-dark text-sm">Rentaleze Rental Agreement</p>
+                <p><strong>Late Returns:</strong> Items returned after the agreed end date are charged 1.5× the daily rate per late day. After 5 overdue days, the item is considered unreturned and the full replacement value is charged.</p>
+                <p><strong>Damage Policy:</strong> Renters are responsible for damage beyond normal wear. Minor damage may incur fees up to the insurance deductible. Major damage or loss is charged at replacement value minus coverage already paid.</p>
+                <p><strong>Theft or Loss:</strong> If an item is lost or stolen while in your possession, you are liable for full replacement cost. Verified theft with a police report on file is covered by Rentaleze rental insurance.</p>
+                <p><strong>Cancellation:</strong> Free cancellation up to 48 hours before rental start. Cancellations within 48 hours are charged 50% of the rental fee. No-shows are charged the full amount.</p>
+                <p><strong>Shipping:</strong> Renter receives two prepaid shipping labels via EasyPost (USPS). Items must be packaged securely and dropped off at a USPS location. The return label must be used before the rental end date.</p>
+                <p><strong>Prohibited Use:</strong> Items may not be used for illegal purposes, commercial subletting, or in ways that void the owner's insurance. Use must match your stated intended purpose.</p>
+                <p><strong>Disputes:</strong> All disputes are handled through the Rentaleze Resolution Center. Payment holds may apply while a dispute is under review.</p>
+              </div>
+              <label className={`flex items-start gap-3 cursor-pointer p-3.5 rounded-xl border transition-all ${form.agreedToTerms ? 'border-emerald-400 bg-emerald-50' : errors.agreedToTerms ? 'border-red-400 bg-red-50' : 'border-rl-gray-3 hover:border-rl-blue'}`}>
+                <input type="checkbox" checked={form.agreedToTerms} onChange={e=>upd('agreedToTerms',e.target.checked)} className="mt-0.5 w-4 h-4 accent-rl-blue shrink-0"/>
+                <span className="text-sm text-rl-dark">I have read and agree to the <span className="font-semibold text-rl-blue">Rentaleze Rental Terms</span>, including the damage policy, late return fees, and cancellation policy.</span>
+              </label>
+              {errors.agreedToTerms && <p className="text-red-500 text-xs mt-2">{errors.agreedToTerms}</p>}
+            </div>
+          </div>
+
+          {/* Right — order summary */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-2xl shadow-card p-5 sticky top-24">
+              <h2 className="font-extrabold text-rl-dark mb-4">Order Summary</h2>
+              <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                {cart.map((item, i) => (
+                  <div key={i} className="flex gap-3">
+                    <img src={item.image} alt={item.title} className="w-14 h-12 object-cover rounded-lg shrink-0"/>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-rl-dark leading-tight line-clamp-2">{item.title}</p>
+                      <p className="text-xs text-rl-gray mt-0.5">{item.days}d · ×{item.qty} · {item.fulfillment==='shipping'?'📦':'📍'}</p>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-sm font-bold text-rl-dark">${item.total}</span>
+                        <button onClick={() => onRemove(i)} className="text-xs text-red-400 hover:text-red-600">✕</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-rl-gray-3 pt-3 space-y-1.5 mb-4 text-sm">
+                <div className="flex justify-between text-rl-gray"><span>Rental subtotal</span><span>${cart.reduce((s,i)=>s+i.base,0)}</span></div>
+                <div className="flex justify-between text-rl-gray"><span>Insurance</span><span>${cart.reduce((s,i)=>s+i.ins,0)}</span></div>
+                <div className="flex justify-between text-rl-gray"><span>Service fees</span><span>${cart.reduce((s,i)=>s+i.svc,0)}</span></div>
+                {hasShipping && <div className="flex justify-between text-rl-gray"><span>📦 Shipping labels</span><span>${cart.reduce((s,i)=>s+(i.shippingFee||0),0)}</span></div>}
+                <div className="flex justify-between font-extrabold text-rl-dark text-base pt-2 border-t border-rl-gray-3"><span>Total</span><span>${cartTotal}</span></div>
+              </div>
+              <button onClick={handleSubmit} className="w-full bg-rl-blue hover:bg-rl-blue-500 text-white font-bold py-3.5 rounded-xl text-sm transition-colors">Place Order →</button>
+              <p className="text-xs text-center text-rl-gray-2 mt-3">🔒 Secure checkout · Rentaleze Guarantee</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────
+function App() {
+  const { page, params, navigate } = useRouter();
+  const [cart, setCart] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
+
+  const addToCart = (item) => {
+    setCart(c => [...c, item]);
+    setCartOpen(true);
+  };
+  const removeFromCart = (index) => setCart(c => c.filter((_, i) => i !== index));
+  const clearCart = () => setCart([]);
+
+  const renderPage = () => {
+    if (page === '/') return <HomePage navigate={navigate}/>;
+    if (page === '/browse') return <BrowsePage navigate={navigate} params={params}/>;
+    if (page.startsWith('/listing/')) return <ListingDetail navigate={navigate} id={page.split('/')[2]} onAddToCart={addToCart}/>;
+    if (page === '/checkout') return <CheckoutPage cart={cart} onRemove={removeFromCart} navigate={navigate} onOrderComplete={clearCart}/>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-rl-off-white">
+        <div className="text-center px-4">
+          <div className="text-6xl font-black text-rl-blue-200 mb-2">404</div>
+          <h2 className="text-xl font-extrabold text-rl-dark mb-2">Page not found</h2>
+          <button onClick={() => navigate('/')} className="bg-rl-blue text-white font-semibold px-6 py-2.5 rounded-xl text-sm mt-4 hover:bg-rl-blue-500 transition-colors">← Back to Homepage</button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar navigate={navigate} currentPage={page} cartCount={cart.length} onOpenCart={() => setCartOpen(true)}/>
+      <main className="flex-1">{renderPage()}</main>
+      {cartOpen && <CartDrawer cart={cart} onClose={() => setCartOpen(false)} onRemove={removeFromCart} navigate={navigate}/>}
+    </div>
+  );
+}
+
+// Mount
+const root = ReactDOM.createRoot(document.getElementById('app'));
+root.render(<App />);
+</script>
+</body>
+</html>
