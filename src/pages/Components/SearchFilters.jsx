@@ -1,4 +1,3 @@
-jsx
 import React, { useState } from 'react'
 import { CATEGORIES } from '../data/listings'
 
