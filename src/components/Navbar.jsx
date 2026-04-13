@@ -92,18 +92,18 @@ export default function Navbar() {
             >
               Browse
             </Link>
-            <Link
-              to="#"
+            <a
+              href="/#how-it-works"
               className="px-3.5 py-2 text-sm font-medium text-rl-dark-3 hover:text-rl-blue-600 hover:bg-rl-blue-50 rounded-lg transition-colors"
             >
               How It Works
-            </Link>
+            </a>
             <div className="w-px h-5 bg-rl-gray-3 mx-1" />
-            <button className="px-3.5 py-2 text-sm font-medium text-rl-dark-3 hover:text-rl-blue-600 hover:bg-rl-blue-50 rounded-lg transition-colors">
+            <Link to="/login" className="px-3.5 py-2 text-sm font-medium text-rl-dark-3 hover:text-rl-blue-600 hover:bg-rl-blue-50 rounded-lg transition-colors">
               Sign In
-            </button>
+            </Link>
             <Link
-              to="#"
+              to="/signup"
               className="btn-primary text-sm py-2 px-4"
             >
               List Your Item
@@ -141,10 +141,10 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="md:hidden bg-white border-t border-rl-gray-3 px-4 pb-4 pt-2 space-y-1">
           <Link to="/browse" className="block py-2.5 px-3 text-sm font-medium text-rl-dark-3 hover:bg-rl-blue-50 rounded-lg" onClick={() => setMobileOpen(false)}>Browse Items</Link>
-          <a href="#how-it-works" className="block py-2.5 px-3 text-sm font-medium text-rl-dark-3 hover:bg-rl-blue-50 rounded-lg" onClick={() => setMobileOpen(false)}>How It Works</a>
+          <a href="/#how-it-works" className="block py-2.5 px-3 text-sm font-medium text-rl-dark-3 hover:bg-rl-blue-50 rounded-lg" onClick={() => setMobileOpen(false)}>How It Works</a>
           <div className="pt-2 flex flex-col gap-2">
-            <button className="btn-outline w-full justify-center text-sm">Sign In</button>
-            <button className="btn-primary w-full justify-center text-sm">List Your Item</button>
+            <Link to="/login" onClick={() => setMobileOpen(false)} className="btn-outline w-full text-center flex items-center justify-center text-sm py-2.5">Sign In</Link>
+            <Link to="/signup" onClick={() => setMobileOpen(false)} className="btn-primary w-full text-center flex items-center justify-center text-sm py-2.5">List Your Item</Link>
           </div>
         </div>
       )}

@@ -139,7 +139,7 @@ export default function HowItWorks() {
               Start Browsing Items
             </button>
           ) : (
-            <button className="btn-primary px-8 py-3 text-sm">
+            <button onClick={() => navigate('/login')} className="btn-primary px-8 py-3 text-sm">
               List Your First Item — Free
             </button>
           )}
