@@ -44,7 +44,7 @@ export default function SavedListingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 max-w-2xl gap-6">
                     {saved.map(item => (
                         <div key={item.id} className="relative">
-                            <ListingCard {...item} />
+                            <ListingCard listing={item} />
                             {/* Unsave overlay button */}
                             <button 
                                 onClick={async (e) => {

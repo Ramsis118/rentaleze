@@ -36,7 +36,7 @@ export default function ListingCard({ listing }) {
   const [liked, setLiked] = useState(false)
   const [imgError, setImgError] = useState(false)
 
-  const fallbackImg = `https://via.placeholder.com/400x280/D6EEF7/4EA3C0?text=${encodeURIComponent(listing.title.substring(0, 20))}`
+  const showImage = listing.image && !imgError
 
   return (
     <Link
@@ -45,12 +45,18 @@ export default function ListingCard({ listing }) {
     >
       {/* Image */}
       <div className="relative overflow-hidden aspect-[4/3] bg-rl-gray-4 rounded-t-2xl">
-        <img
-          src={imgError ? fallbackImg : listing.image}
-          alt={listing.title}
-          onError={() => setImgError(true)}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
+        {showImage ? (
+          <img
+            src={listing.image}
+            alt={listing.title}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-rl-blue-50 text-rl-blue-600 text-sm font-semibold px-4 text-center">
+            {listing.title}
+          </div>
+        )}
 
         {/* Price badge */}
         <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm text-rl-dark font-bold text-sm px-3 py-1.5 rounded-xl shadow-sm">
@@ -83,11 +89,15 @@ export default function ListingCard({ listing }) {
 
         {/* Rating + location row */}
         <div className="flex items-center justify-between text-xs text-rl-gray mb-3">
-          <div className="flex items-center gap-1">
-            <StarIcon />
-            <span className="font-semibold text-rl-dark-3">{listing.rating.toFixed(1)}</span>
-            <span className="text-rl-gray-2">({listing.reviewCount})</span>
-          </div>
+          {listing.reviewCount > 0 ? (
+            <div className="flex items-center gap-1">
+              <StarIcon />
+              <span className="font-semibold text-rl-dark-3">{listing.rating.toFixed(1)}</span>
+              <span className="text-rl-gray-2">({listing.reviewCount})</span>
+            </div>
+          ) : (
+            <span className="font-semibold text-rl-blue-600">New</span>
+          )}
           <div className="flex items-center gap-1 text-rl-gray">
             <MapPinIcon />
             <span>{listing.location}</span>
@@ -118,11 +128,17 @@ export default function ListingCard({ listing }) {
 
       {/* Owner footer */}
       <div className="px-4 pb-3 pt-0 flex items-center gap-2 border-t border-rl-gray-3/60 mt-auto">
-        <img
-          src={listing.ownerAvatar}
-          alt={listing.ownerName}
-          className="w-6 h-6 rounded-full object-cover border border-rl-gray-3"
-        />
+        {listing.ownerAvatar ? (
+          <img
+            src={listing.ownerAvatar}
+            alt={listing.ownerName}
+            className="w-6 h-6 rounded-full object-cover border border-rl-gray-3"
+          />
+        ) : (
+          <span className="w-6 h-6 rounded-full bg-rl-blue-50 text-rl-blue text-xs font-bold flex items-center justify-center">
+            {listing.ownerName?.[0]}
+          </span>
+        )}
         <span className="text-xs text-rl-gray">{listing.ownerName}</span>
         {listing.distance && (
           <span className="ml-auto text-xs text-rl-gray-2">{listing.distance}</span>

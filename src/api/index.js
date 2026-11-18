@@ -32,7 +32,12 @@ class ApiClient {
             headers
         })
 
-        const data = await response.json()
+        let data
+        try {
+            data = await response.json()
+        } catch {
+            throw new Error(response.ok ? 'Unexpected server response' : `Request failed (${response.status})`)
+        }
 
         if (!response.ok) {
             throw new Error(data.error || 'Request failed')
@@ -93,6 +98,27 @@ class ApiClient {
 
     async getCategories() {
         return this.request('/listings/meta/categories')
+    }
+
+    async getMyListings() {
+        return this.request('/listings/mine')
+    }
+
+    async updateListing(id, data) {
+        return this.request(`/listings/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async deleteListing(id) {
+        return this.request(`/listings/${id}`, { method: 'DELETE' })
+    }
+
+    async uploadListingPhotos(files) {
+        const form = new FormData()
+        for (const f of files) form.append('photos', f)
+        return this.request('/listings/photos', { method: 'POST', body: form })
     }
 
     // Bookings

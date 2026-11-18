@@ -1,1 +1,22 @@
 .vercel
+
+# Dependencies and build output
+node_modules/
+dist/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# User data — never commit (ID photos, listing photos, avatars, database with password hashes)
+uploads/
+server/db/*.db
+server/db/*.db-journal
+server/db/*.db-wal
+server/db/*.db-shm
+
+# Local scratch
+.gitstatus
+temp.js
+*.log

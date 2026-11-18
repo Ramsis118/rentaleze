@@ -1,21 +1,39 @@
 services:
   - type: web
     name: rentaleze-app
-    env: node
-    buildCommand: npm install && npm run build
+    runtime: node
+    plan: starter            # a persistent disk needs a paid plan
+    region: virginia
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
+    healthCheckPath: /api/health
     disk:
-      name: sqlite-data
+      name: rentaleze-data
       mountPath: /data
       sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
-        value: 20
+        value: "22"
       - key: DB_PATH
         value: /data/rentaleze.db
+      - key: UPLOADS_DIR
+        value: /data/uploads
+      # Main domain shows only the coming-soon / waitlist page
+      - key: WAITLIST_HOSTS
+        value: rentaleze.com,www.rentaleze.com
+      # Password for beta.rentaleze.com — set it yourself in the Render dashboard
+      - key: BETA_PASSWORD
+        sync: false
+      - key: FRONTEND_URL
+        value: https://beta.rentaleze.com
+      - key: SHOW_DEMO_LISTINGS
+        value: "false"
       - key: ACCESS_TOKEN_SECRET
         generateValue: true
       - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+      # Used to download the waitlist as CSV (header x-admin-token)
+      - key: ADMIN_TOKEN
         generateValue: true

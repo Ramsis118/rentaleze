@@ -1,12 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../api'
 import Hero from '../components/Hero'
 import CategoryPills from '../components/CategoryPills'
 import ListingCard from '../components/ListingCard'
 import HowItWorks from '../components/HowItWorks'
 import TrustSection from '../components/TrustSection'
 import Footer from '../components/Footer'
-import { LISTINGS, CATEGORIES } from '../data/listings'
+
 
 const ArrowRightIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,11 +43,18 @@ const TESTIMONIALS = [
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState('all')
 
-  const filtered = activeCategory === 'all'
-    ? LISTINGS
-    : LISTINGS.filter(l => l.category === activeCategory)
+  const [displayListings, setDisplayListings] = useState([])
+  const [loadingListings, setLoadingListings] = useState(true)
 
-  const displayListings = filtered.slice(0, 8)
+  useEffect(() => {
+    let cancelled = false
+    setLoadingListings(true)
+    api.getListings({ category: activeCategory, limit: 8 })
+      .then(data => { if (!cancelled) setDisplayListings(data.listings) })
+      .catch(() => { if (!cancelled) setDisplayListings([]) })
+      .finally(() => { if (!cancelled) setLoadingListings(false) })
+    return () => { cancelled = true }
+  }, [activeCategory])
 
   return (
     <div className="min-h-screen">
@@ -77,7 +85,11 @@ export default function HomePage() {
           </div>
 
           {/* Listings grid */}
-          {displayListings.length > 0 ? (
+          {loadingListings ? (
+            <div className="py-16 flex justify-center">
+              <div className="animate-spin w-8 h-8 rounded-full border-4 border-rl-gray-3 border-t-rl-blue" />
+            </div>
+          ) : displayListings.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
               {displayListings.map(listing => (
                 <ListingCard key={listing.id} listing={listing} />
@@ -138,9 +150,9 @@ export default function HomePage() {
                 ))}
               </div>
 
-              <button className="btn-primary px-8 py-3 text-sm">
+              <Link to="/dashboard/listings/new" className="btn-primary px-8 py-3 text-sm">
                 Start Listing — It's Free
-              </button>
+              </Link>
             </div>
 
             {/* Right: earnings preview card */}

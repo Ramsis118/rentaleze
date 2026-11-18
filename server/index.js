@@ -13,6 +13,9 @@ import bookingsRoutes from './routers/bookings.js'
 import usersRoutes from './routers/users.js'
 import paymentsRoutes from './routers/payments.js'
 import messagesRoutes from './routers/messages.js'
+import waitlistRoutes from './routers/waitlist.js'
+import { siteRouting } from './middleware/siteRouting.js'
+import { UPLOADS_DIR } from './utils/paths.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -20,8 +23,22 @@ const __dirname = dirname(__filename)
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// Render (and most hosts) sit behind one proxy; this makes req.hostname,
+// req.secure and rate-limit IPs reflect the real visitor
+app.set('trust proxy', 1)
+
 // Security middleware
-app.use(helmet())
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            // Listing photos and avatars can come from secure (https) image hosts
+            'img-src': ["'self'", 'data:', 'blob:', 'https:']
+        }
+    }
+}))
+// rentaleze.com → coming-soon page; beta host → password gate (see middleware/siteRouting.js)
+app.use(siteRouting())
+
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true
@@ -30,7 +47,7 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
+    max: 500 // per IP per window; browsing with filters makes many small requests
 })
 app.use('/api/', limiter)
 
@@ -44,13 +61,20 @@ app.use('/api/bookings', bookingsRoutes)
 app.use('/api/users', usersRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/messages', messagesRoutes)
+app.use('/api/waitlist', waitlistRoutes)
 
-// Serve avatars publicly
-app.use('/uploads/avatars', express.static(join(process.cwd(), 'uploads', 'avatars')))
+// Serve avatars and listing photos publicly (ID photos are never served)
+app.use('/uploads/avatars', express.static(join(UPLOADS_DIR, 'avatars')))
+app.use('/uploads/listings', express.static(join(UPLOADS_DIR, 'listings')))
 
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+// Unknown API routes return JSON 404 (not the website's HTML)
+app.use('/api', (req, res) => {
+    res.status(404).json({ error: 'Not found' })
 })
 
 // Serve static files in production

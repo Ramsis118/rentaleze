@@ -1,9 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
+import api from '../api'
 import ListingCard from '../components/ListingCard'
 import SearchFilters from '../components/SearchFilters'
 import Footer from '../components/Footer'
-import { LISTINGS, CATEGORIES } from '../data/listings'
+import { CATEGORIES } from '../data/listings'
+
+const PRICE_CAP = 200 // slider max; at the cap there is no upper price limit
 
 const SORT_OPTIONS = [
   { value: 'relevance',  label: 'Best Match' },
@@ -60,44 +63,33 @@ export default function BrowsePage() {
     setFilters(f => ({ ...f, category: cat }))
   }, [searchParams])
 
-  // Filter & sort listings
-  const results = useMemo(() => {
-    let list = [...LISTINGS]
+  // Fetch listings from the API whenever filters or the search change
+  const [results, setResults] = useState([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
-    // Search query
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      list = list.filter(l =>
-        l.title.toLowerCase().includes(q) ||
-        l.category.toLowerCase().includes(q) ||
-        l.location.toLowerCase().includes(q)
-      )
-    }
+  useEffect(() => {
+    let cancelled = false
+    const params = { sort: filters.sort, limit: 60 }
+    if (searchQuery) params.q = searchQuery
+    if (filters.category !== 'all') params.category = filters.category
+    if (filters.minPrice > 0) params.minPrice = filters.minPrice
+    if (filters.maxPrice < PRICE_CAP) params.maxPrice = filters.maxPrice
+    if (filters.instantBook) params.instantBook = 'true'
+    if (filters.shipping) params.shipping = 'true'
+    if (filters.verified) params.verified = 'true'
 
-    // Category
-    if (filters.category !== 'all') {
-      list = list.filter(l => l.category === filters.category)
-    }
-
-    // Price
-    list = list.filter(l =>
-      l.pricePerDay >= filters.minPrice && l.pricePerDay <= filters.maxPrice
-    )
-
-    // Features
-    if (filters.instantBook) list = list.filter(l => l.badges.includes('Instant Book'))
-    if (filters.shipping)    list = list.filter(l => l.shipping)
-    if (filters.verified)    list = list.filter(l => l.verified)
-
-    // Sort
-    switch (filters.sort) {
-      case 'price_asc':  list.sort((a, b) => a.pricePerDay - b.pricePerDay); break
-      case 'price_desc': list.sort((a, b) => b.pricePerDay - a.pricePerDay); break
-      case 'rating':     list.sort((a, b) => b.rating - a.rating); break
-      default: break
-    }
-
-    return list
+    setLoading(true)
+    setLoadError('')
+    // Short delay so dragging the price slider doesn't fire a request per pixel
+    const timer = setTimeout(() => {
+      api.getListings(params)
+        .then(data => { if (!cancelled) { setResults(data.listings); setTotal(data.total) } })
+        .catch(err => { if (!cancelled) { setResults([]); setTotal(0); setLoadError(err.message) } })
+        .finally(() => { if (!cancelled) setLoading(false) })
+    }, 200)
+    return () => { cancelled = true; clearTimeout(timer) }
   }, [filters, searchQuery])
 
   const activeCategory = CATEGORIES.find(c => c.id === filters.category)
@@ -225,13 +217,22 @@ export default function BrowsePage() {
                 {searchQuery ? `Results for "${searchQuery}"` : (activeCategory?.id === 'all' ? 'All Items' : activeCategory?.label)}
               </h1>
               <p className="text-sm text-rl-gray mt-0.5">
-                {results.length} {results.length === 1 ? 'item' : 'items'} available
+                {loading ? 'Searching…' : `${total} ${total === 1 ? 'item' : 'items'} available`}
               </p>
             </div>
           </div>
 
           {/* Grid or empty state */}
-          {results.length === 0 ? (
+          {loading && results.length === 0 ? (
+            <div className="py-24 flex justify-center">
+              <div className="animate-spin w-8 h-8 rounded-full border-4 border-rl-gray-3 border-t-rl-blue" />
+            </div>
+          ) : loadError ? (
+            <div className="text-center py-24">
+              <h3 className="text-lg font-bold text-rl-dark mb-2">Couldn't load listings</h3>
+              <p className="text-rl-gray text-sm">{loadError}</p>
+            </div>
+          ) : results.length === 0 ? (
             <div className="text-center py-24">
               <div className="text-5xl mb-4">🔍</div>
               <h3 className="text-lg font-bold text-rl-dark mb-2">No results found</h3>
@@ -273,15 +274,15 @@ function ListListingCard({ listing }) {
 
   return (
     <div className="card flex gap-4 p-4 hover:shadow-card-hover transition-all">
-      <div className="w-36 h-28 rounded-xl overflow-hidden shrink-0 bg-rl-gray-4">
-        <img src={listing.image} alt={listing.title} className="w-full h-full object-cover" />
-      </div>
+      <Link to={`/listing/${listing.id}`} className="w-36 h-28 rounded-xl overflow-hidden shrink-0 bg-rl-gray-4">
+        {listing.image && <img src={listing.image} alt={listing.title} className="w-full h-full object-cover" />}
+      </Link>
       <div className="flex-1 min-w-0 flex flex-col justify-between">
         <div>
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-rl-dark text-sm leading-snug line-clamp-1 hover:text-rl-blue-600 cursor-pointer">
+            <Link to={`/listing/${listing.id}`} className="font-semibold text-rl-dark text-sm leading-snug line-clamp-1 hover:text-rl-blue-600">
               {listing.title}
-            </h3>
+            </Link>
             <button onClick={() => setLiked(!liked)} className="text-rl-gray-2 hover:text-rl-blue shrink-0">
               <svg className="w-4 h-4" fill={liked ? '#6BB8D4' : 'none'} stroke={liked ? '#6BB8D4' : 'currentColor'} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -291,7 +292,9 @@ function ListListingCard({ listing }) {
           <div className="flex items-center gap-3 mt-1 text-xs text-rl-gray">
             <span className="flex items-center gap-1">
               <svg className="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-              <strong className="text-rl-dark-3">{listing.rating}</strong> ({listing.reviewCount})
+              {listing.reviewCount > 0
+                ? <><strong className="text-rl-dark-3">{listing.rating.toFixed(1)}</strong> ({listing.reviewCount})</>
+                : <strong className="text-rl-dark-3">New</strong>}
             </span>
             <span>{listing.location}</span>
             {listing.distance && <span>{listing.distance} away</span>}
@@ -310,7 +313,9 @@ function ListListingCard({ listing }) {
         </div>
         <div className="flex items-center justify-between mt-3">
           <div className="flex items-center gap-2">
-            <img src={listing.ownerAvatar} alt="" className="w-6 h-6 rounded-full" />
+            {listing.ownerAvatar
+              ? <img src={listing.ownerAvatar} alt="" className="w-6 h-6 rounded-full" />
+              : <span className="w-6 h-6 rounded-full bg-rl-blue-50 text-rl-blue text-xs font-bold flex items-center justify-center">{listing.ownerName?.[0]}</span>}
             <span className="text-xs text-rl-gray">{listing.ownerName}</span>
           </div>
           <div className="flex items-center gap-3">
@@ -318,7 +323,7 @@ function ListListingCard({ listing }) {
               <span className="text-rl-blue-600">${listing.pricePerDay}</span>
               <span className="text-xs font-normal text-rl-gray"> / day</span>
             </span>
-            <button className="btn-primary text-xs py-1.5 px-4">Book</button>
+            <Link to={`/listing/${listing.id}`} className="btn-primary text-xs py-1.5 px-4">Book</Link>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import React from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 const NavItem = ({ to, icon, label }) => {
@@ -22,12 +22,17 @@ const NavItem = ({ to, icon, label }) => {
 }
 
 export default function DashboardLayout() {
-    const { user, logout } = useAuth()
+    const { user, loading, logout } = useAuth()
     const navigate = useNavigate()
+    const location = useLocation()
 
     const handleLogout = async () => {
         await logout()
         navigate('/')
+    }
+
+    if (!loading && !user) {
+        return <Navigate to="/login" replace state={{ from: location.pathname }} />
     }
 
     if (!user) {
@@ -87,6 +92,11 @@ export default function DashboardLayout() {
                                 to="/dashboard/messages" 
                                 label="Messages" 
                                 icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>}
+                            />
+                            <NavItem
+                                to="/dashboard/listings"
+                                label="My Listings"
+                                icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>}
                             />
                             <NavItem 
                                 to="/dashboard/bookings" 

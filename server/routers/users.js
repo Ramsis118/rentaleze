@@ -4,11 +4,12 @@ import path from 'path'
 import fs from 'fs'
 import db from '../db/database.js'
 import { authenticate } from '../middleware/auth.js'
+import { BASE_SELECT, toListing } from './listings.js'
+
+import { UPLOADS_DIR } from '../utils/paths.js'
 
 // Configure Multer Storage for file uploads
-const uploadDir = path.join(process.cwd(), 'uploads')
-fs.mkdirSync(path.join(uploadDir, 'avatars'), { recursive: true })
-fs.mkdirSync(path.join(uploadDir, 'ids'), { recursive: true })
+const uploadDir = UPLOADS_DIR
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -101,7 +102,7 @@ router.post('/profile/verify-phone', authenticate, (req, res) => {
         }
 
         db.prepare(`
-            UPDATE users SET phone_verified = 1, is_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+            UPDATE users SET phone_verified = 1, is_verified = 2, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         `).run(req.user.id)
 
         res.json({ message: 'Phone verified successfully' })
@@ -115,15 +116,13 @@ router.post('/profile/verify-phone', authenticate, (req, res) => {
 router.get('/saved', authenticate, (req, res) => {
     try {
         const saved = db.prepare(`
-            SELECT l.*, 
-                   EXISTS(SELECT 1 FROM saved_listings sl WHERE sl.listing_id = l.id AND sl.user_id = ?) as is_saved
-            FROM saved_listings sl
-            JOIN listings l ON sl.listing_id = l.id
-            WHERE sl.user_id = ?
+            ${BASE_SELECT}
+            JOIN saved_listings sl ON sl.listing_id = l.id
+            WHERE sl.user_id = ? AND l.status = 'active'
             ORDER BY sl.created_at DESC
-        `).all(req.user.id, req.user.id)
-        
-        res.json(saved)
+        `).all(req.user.id)
+
+        res.json(saved.map(toListing))
     } catch (error) {
         console.error('Get saved listings error:', error)
         res.status(500).json({ error: 'Failed to fetch saved listings' })

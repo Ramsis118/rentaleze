@@ -16,6 +16,8 @@ import BookingsPage from './pages/Dashboard/BookingsPage'
 import SavedListingsPage from './pages/Dashboard/SavedListingsPage'
 import PaymentsPage from './pages/Dashboard/PaymentsPage'
 import VerificationPage from './pages/Dashboard/VerificationPage'
+import MyListingsPage from './pages/Dashboard/MyListingsPage'
+import ListingFormPage from './pages/Dashboard/ListingFormPage'
 import { useCart } from './context/CartContext'
 import { AuthProvider } from './context/AuthContext'
 
@@ -50,6 +52,9 @@ function AppContent() {
             <Route index element={<ProfilePage />} />
             <Route path="verification" element={<VerificationPage />} />
             <Route path="messages" element={<MessagesPage />} />
+            <Route path="listings" element={<MyListingsPage />} />
+            <Route path="listings/new" element={<ListingFormPage />} />
+            <Route path="listings/:id/edit" element={<ListingFormPage />} />
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="saved" element={<SavedListingsPage />} />
             <Route path="payments" element={<PaymentsPage />} />

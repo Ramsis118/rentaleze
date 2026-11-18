@@ -23,8 +23,12 @@ router.post('/', authenticate, (req, res) => {
         // Get listing price
         const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(listingId)
 
-        if (!listing) {
+        if (!listing || listing.status !== 'active') {
             return res.status(404).json({ error: 'Listing not found' })
+        }
+
+        if (listing.owner_id === req.user.id) {
+            return res.status(400).json({ error: "You can't book your own item." })
         }
 
         const baseTotal = days * listing.price_per_day * (qty || 1)
@@ -149,7 +153,7 @@ router.put('/:id/cancel', authenticate, (req, res) => {
             return res.status(400).json({ error: 'Booking already cancelled' })
         }
 
-        db.prepare('UPDATE bookings SET status = "cancelled" WHERE id = ?').run(req.params.id)
+        db.prepare(`UPDATE bookings SET status = 'cancelled' WHERE id = ?`).run(req.params.id)
 
         res.json({ message: 'Booking cancelled successfully' })
     } catch (error) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { LISTINGS } from '../data/listings'
-import { getListingDetails } from '../data/listingDetails'
+import api from '../api'
+import { useAuth } from '../context/AuthContext'
 import Footer from '../components/Footer'
 
 // ─── Icon helpers ──────────────────────────────────────────────────────────────
@@ -182,9 +182,14 @@ function BookingCard({ listing }) {
 
   const fmt = (d) => d.toISOString().split('T')[0]
 
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [startDate, setStartDate] = useState(fmt(tomorrow))
   const [endDate, setEndDate] = useState(fmt(dayAfter))
   const [booked, setBooked] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [bookingError, setBookingError] = useState('')
+  const isOwnListing = user && user.id === listing.ownerId
 
   const msPerDay = 86400000
   const days = Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / msPerDay))
@@ -192,7 +197,28 @@ function BookingCard({ listing }) {
   const insuranceFee = Math.round(rentalTotal * 0.08)
   const serviceFee = Math.round(rentalTotal * 0.12)
   const total = rentalTotal + insuranceFee + serviceFee
-  const instantBook = listing.badges.includes('Instant Book')
+  const instantBook = listing.instantBook
+
+  const handleBook = async () => {
+    setBookingError('')
+    if (!user) {
+      navigate('/login', { state: { from: `/listing/${listing.id}` } })
+      return
+    }
+    if (new Date(endDate) <= new Date(startDate)) {
+      setBookingError('End date must be after the start date.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await api.createBooking({ listingId: listing.id, startDate, endDate, days, fulfillment: 'pickup' })
+      setBooked(true)
+    } catch (err) {
+      setBookingError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   if (booked) {
     return (
@@ -202,17 +228,14 @@ function BookingCard({ listing }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-lg font-extrabold text-rl-dark mb-1">
-          {instantBook ? 'Booking Confirmed!' : 'Request Sent!'}
-        </h3>
+        <h3 className="text-lg font-extrabold text-rl-dark mb-1">Request Sent!</h3>
         <p className="text-sm text-rl-gray mb-5">
-          {instantBook
-            ? `Your rental is confirmed for ${days} day${days !== 1 ? 's' : ''}. Check your email for details.`
-            : `${listing.ownerName} will respond within 24 hours.`}
+          Your request for {days} day{days !== 1 ? 's' : ''} has been sent to {listing.ownerName}.
+          You can track it in your bookings.
         </p>
-        <button onClick={() => setBooked(false)} className="btn-outline text-sm w-full">
-          Modify Booking
-        </button>
+        <Link to="/dashboard/bookings" className="btn-outline text-sm w-full justify-center">
+          View My Bookings
+        </Link>
       </div>
     )
   }
@@ -225,11 +248,13 @@ function BookingCard({ listing }) {
           <span className="text-2xl font-extrabold text-rl-dark">${listing.pricePerDay}</span>
           <span className="text-rl-gray text-sm">/ day</span>
         </div>
-        <div className="flex items-center gap-1 mt-0.5">
-          <StarIcon />
-          <span className="text-sm font-semibold text-rl-dark">{listing.rating}</span>
-          <span className="text-xs text-rl-gray-2">({listing.reviewCount} reviews)</span>
-        </div>
+        {listing.reviewCount > 0 && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <StarIcon />
+            <span className="text-sm font-semibold text-rl-dark">{listing.rating}</span>
+            <span className="text-xs text-rl-gray-2">({listing.reviewCount} reviews)</span>
+          </div>
+        )}
       </div>
 
       <div className="px-6 py-4 space-y-4">
@@ -297,23 +322,39 @@ function BookingCard({ listing }) {
         </div>
 
         {/* CTA */}
-        <button
-          onClick={() => setBooked(true)}
-          className="btn-primary w-full py-3 text-sm font-bold"
-        >
-          {instantBook ? '⚡ Book Instantly' : '→ Request to Book'}
-        </button>
+        {isOwnListing ? (
+          <Link to={`/dashboard/listings/${listing.id}/edit`} className="btn-outline w-full py-3 text-sm font-bold justify-center">
+            This is your listing — Edit it
+          </Link>
+        ) : (
+          <button
+            onClick={handleBook}
+            disabled={submitting}
+            className="btn-primary w-full py-3 text-sm font-bold justify-center disabled:opacity-60"
+          >
+            {submitting ? 'Sending request…' : (instantBook ? '⚡ Book Instantly' : '→ Request to Book')}
+          </button>
+        )}
 
-        {instantBook && (
-          <p className="text-xs text-center text-rl-gray-2">
-            You won't be charged until the owner confirms
+        {bookingError && (
+          <p className="text-xs text-center text-red-600">
+            {bookingError}{' '}
+            {/verification/i.test(bookingError) && (
+              <Link to="/dashboard/verification" className="underline font-semibold">Verify now</Link>
+            )}
           </p>
         )}
 
+        <p className="text-xs text-center text-rl-gray-2">
+          You won't be charged yet — payments are not live.
+        </p>
+
         {/* Contact owner */}
-        <button className="btn-outline w-full py-2.5 text-sm">
-          Message {listing.ownerName.split(' ')[0]}
-        </button>
+        {!isOwnListing && (
+          <button className="btn-outline w-full py-2.5 text-sm justify-center">
+            Message {listing.ownerName.split(' ')[0]}
+          </button>
+        )}
 
         {/* Trust note */}
         <div className="flex items-start gap-2 pt-1">
@@ -333,11 +374,17 @@ function OwnerCard({ listing, details }) {
     <div className="border border-rl-gray-3 rounded-2xl p-6 bg-white">
       <div className="flex items-start gap-4 mb-5">
         <div className="relative shrink-0">
-          <img
-            src={listing.ownerAvatar.replace('?img=', '?img=')}
-            alt={listing.ownerName}
-            className="w-16 h-16 rounded-full object-cover border-2 border-rl-blue-100"
-          />
+          {listing.ownerAvatar ? (
+            <img
+              src={listing.ownerAvatar}
+              alt={listing.ownerName}
+              className="w-16 h-16 rounded-full object-cover border-2 border-rl-blue-100"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-rl-blue-50 text-rl-blue text-2xl font-bold flex items-center justify-center border-2 border-rl-blue-100">
+              {listing.ownerName?.[0]}
+            </div>
+          )}
           {listing.verified && (
             <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-rl-blue rounded-full flex items-center justify-center border-2 border-white">
               <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -355,20 +402,26 @@ function OwnerCard({ listing, details }) {
               </span>
             )}
           </div>
-          <p className="text-xs text-rl-gray-2 mt-0.5">Member since {details.ownerSince} · {details.ownerTotalReviews} reviews</p>
-          <div className="flex items-center gap-1 mt-1">
-            <StarIcon />
-            <span className="text-sm font-semibold text-rl-dark">{listing.rating}</span>
-            <span className="text-xs text-rl-gray-2">avg rating</span>
-          </div>
+          <p className="text-xs text-rl-gray-2 mt-0.5">
+            Member since {details.ownerSince}{details.ownerTotalReviews > 0 ? ` · ${details.ownerTotalReviews} reviews` : ''}
+          </p>
+          {listing.reviewCount > 0 && (
+            <div className="flex items-center gap-1 mt-1">
+              <StarIcon />
+              <span className="text-sm font-semibold text-rl-dark">{listing.rating}</span>
+              <span className="text-xs text-rl-gray-2">avg rating</span>
+            </div>
+          )}
         </div>
       </div>
 
-      <p className="text-sm text-rl-dark-3 leading-relaxed mb-5">
-        "{details.ownerBio}"
-      </p>
+      {details.ownerBio && (
+        <p className="text-sm text-rl-dark-3 leading-relaxed mb-5">
+          "{details.ownerBio}"
+        </p>
+      )}
 
-      <div className="grid grid-cols-2 gap-3">
+      {details.ownerResponseRate != null && details.ownerResponseTime && <div className="grid grid-cols-2 gap-3">
         {[
           { label: 'Response rate', value: `${details.ownerResponseRate}%` },
           { label: 'Response time', value: details.ownerResponseTime },
@@ -378,7 +431,7 @@ function OwnerCard({ listing, details }) {
             <p className="text-xs text-rl-gray-2 mt-0.5">{item.label}</p>
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }
@@ -387,6 +440,15 @@ function OwnerCard({ listing, details }) {
 function ReviewsSection({ listing, reviews }) {
   const [showAll, setShowAll] = useState(false)
   const display = showAll ? reviews : reviews.slice(0, 3)
+
+  if (!reviews.length) {
+    return (
+      <div className="bg-white border border-rl-gray-3 rounded-2xl p-6 text-center">
+        <p className="text-sm font-semibold text-rl-dark">No reviews yet</p>
+        <p className="text-xs text-rl-gray-2 mt-1">Reviews appear here after completed rentals.</p>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -442,14 +504,16 @@ function MobileBookingBar({ listing, onOpenModal }) {
     <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-rl-gray-3 px-4 py-3 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
       <div className="flex-1">
         <p className="text-lg font-extrabold text-rl-dark">${listing.pricePerDay}<span className="text-sm font-medium text-rl-gray">/day</span></p>
-        <div className="flex items-center gap-1">
-          <StarIcon />
-          <span className="text-xs font-semibold text-rl-dark">{listing.rating}</span>
-          <span className="text-xs text-rl-gray-2">({listing.reviewCount})</span>
-        </div>
+        {listing.reviewCount > 0 && (
+          <div className="flex items-center gap-1">
+            <StarIcon />
+            <span className="text-xs font-semibold text-rl-dark">{listing.rating}</span>
+            <span className="text-xs text-rl-gray-2">({listing.reviewCount})</span>
+          </div>
+        )}
       </div>
       <button onClick={onOpenModal} className="btn-primary px-8 py-3 text-sm">
-        {listing.badges.includes('Instant Book') ? '⚡ Book Now' : 'Check Availability'}
+        {listing.instantBook ? '⚡ Book Now' : 'Check Availability'}
       </button>
     </div>
   )
@@ -484,12 +548,31 @@ export default function ListingDetailPage() {
   const navigate = useNavigate()
   const [wishlist, setWishlist] = useState(false)
   const [bookingModal, setBookingModal] = useState(false)
+  const [listing, setListing] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const listingId = parseInt(id, 10)
-  const listing = LISTINGS.find(l => l.id === listingId)
-  const details = getListingDetails(listingId)
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    api.getListing(id)
+      .then(data => { if (!cancelled) setListing(data) })
+      .catch(() => { if (!cancelled) setListing(null) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [id])
 
-  if (!listing || !details) {
+  // The API returns the listing and its extended details in one object
+  const details = listing
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-rl-off-white">
+        <div className="animate-spin w-8 h-8 rounded-full border-4 border-rl-gray-3 border-t-rl-blue" />
+      </div>
+    )
+  }
+
+  if (!listing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-rl-off-white">
         <div className="text-center px-4">
@@ -529,7 +612,20 @@ export default function ListingDetailPage() {
           <div className="lg:col-span-7 space-y-8">
 
             {/* Image gallery */}
-            <ImageGallery images={details.images} title={listing.title} />
+            {details.images.length > 0 ? (
+              <ImageGallery images={details.images} title={listing.title} />
+            ) : (
+              <div className="rounded-2xl h-72 bg-rl-blue-50 flex items-center justify-center text-rl-blue-600 font-semibold">
+                No photos yet
+              </div>
+            )}
+
+            {listing.status && listing.status !== 'active' && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
+                Only you can see this listing — it is <strong>{listing.status}</strong>.{' '}
+                <Link to={`/dashboard/listings/${listing.id}/edit`} className="underline font-semibold">Edit listing</Link>
+              </div>
+            )}
 
             {/* Title & meta */}
             <div>
@@ -556,15 +652,22 @@ export default function ListingDetailPage() {
 
               {/* Meta row */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
-                <div className="flex items-center gap-1">
-                  <StarIcon />
-                  <span className="font-bold text-rl-dark text-sm">{listing.rating}</span>
-                  <span className="text-xs text-rl-gray-2">({listing.reviewCount} reviews)</span>
-                </div>
+                {listing.reviewCount > 0 ? (
+                  <div className="flex items-center gap-1">
+                    <StarIcon />
+                    <span className="font-bold text-rl-dark text-sm">{listing.rating}</span>
+                    <span className="text-xs text-rl-gray-2">({listing.reviewCount} reviews)</span>
+                  </div>
+                ) : (
+                  <span className="text-sm font-semibold text-rl-blue-600">New listing</span>
+                )}
                 <div className="flex items-center gap-1 text-rl-gray-2">
                   <LocationIcon />
-                  <span className="text-sm">{listing.location} · {listing.distance} away</span>
+                  <span className="text-sm">{listing.location}{listing.distance ? ` · ${listing.distance} away` : ''}</span>
                 </div>
+                {listing.condition && (
+                  <span className="text-sm text-rl-gray-2">Condition: <strong className="text-rl-dark">{listing.condition}</strong></span>
+                )}
               </div>
 
               {/* Badges */}
@@ -599,11 +702,11 @@ export default function ListingDetailPage() {
             {/* Description */}
             <div>
               <h2 className="text-lg font-extrabold text-rl-dark mb-3">About this item</h2>
-              <p className="text-rl-dark-3 leading-relaxed">{details.description}</p>
+              <p className="text-rl-dark-3 leading-relaxed whitespace-pre-line">{details.description || 'The owner has not added a description yet.'}</p>
             </div>
 
             {/* What's Included */}
-            <div>
+            {details.includes.length > 0 && <div>
               <h2 className="text-lg font-extrabold text-rl-dark mb-4">What's included</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {details.includes.map((item, i) => (
@@ -613,10 +716,10 @@ export default function ListingDetailPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </div>}
 
             {/* Specifications */}
-            <div>
+            {Object.keys(details.specs).length > 0 && <div>
               <h2 className="text-lg font-extrabold text-rl-dark mb-4">Specifications</h2>
               <div className="bg-white border border-rl-gray-3 rounded-2xl overflow-hidden">
                 {Object.entries(details.specs).map(([key, val], i, arr) => (
@@ -629,7 +732,7 @@ export default function ListingDetailPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </div>}
 
             {/* Rental Rules */}
             <div>
@@ -662,7 +765,7 @@ export default function ListingDetailPage() {
             <div>
               <h2 className="text-lg font-extrabold text-rl-dark mb-4">
                 Location
-                <span className="text-sm text-rl-gray font-normal ml-2">{listing.location} · {listing.distance} from you</span>
+                <span className="text-sm text-rl-gray font-normal ml-2">{listing.location}{listing.distance ? ` · ${listing.distance} from you` : ''}</span>
               </h2>
               <div className="bg-white border border-rl-gray-3 rounded-2xl overflow-hidden h-48 flex items-center justify-center">
                 <div className="text-center">
@@ -723,9 +826,17 @@ export default function ListingDetailPage() {
 
 // ─── Similar Listings ─────────────────────────────────────────────────────────
 function SimilarListings({ listing }) {
-  const similar = LISTINGS
-    .filter(l => l.id !== listing.id && l.category === listing.category)
-    .slice(0, 4)
+  const [similar, setSimilar] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    api.getListings({ category: listing.category, limit: 5 })
+      .then(data => {
+        if (!cancelled) setSimilar(data.listings.filter(l => l.id !== listing.id).slice(0, 4))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [listing.id, listing.category])
 
   if (similar.length === 0) return null
 
@@ -750,10 +861,14 @@ function SimilarListings({ listing }) {
               <p className="text-xs font-semibold text-rl-dark truncate mb-1">{item.title}</p>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-extrabold text-rl-blue">${item.pricePerDay}<span className="text-xs font-normal text-rl-gray">/day</span></span>
-                <div className="flex items-center gap-0.5">
-                  <StarIcon />
-                  <span className="text-xs font-semibold text-rl-dark">{item.rating}</span>
-                </div>
+                {item.reviewCount > 0 ? (
+                  <div className="flex items-center gap-0.5">
+                    <StarIcon />
+                    <span className="text-xs font-semibold text-rl-dark">{item.rating}</span>
+                  </div>
+                ) : (
+                  <span className="text-xs font-semibold text-rl-blue-600">New</span>
+                )}
               </div>
             </div>
           </Link>

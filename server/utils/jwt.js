@@ -1,7 +1,12 @@
 import jwt from 'jsonwebtoken'
 
-const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'your-access-secret-key-change-in-production'
-const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your-refresh-secret-key-change-in-production'
+// In production the secrets must come from the environment. A built-in fallback
+// would let anyone who reads this code forge a login for any account.
+if (process.env.NODE_ENV === 'production' && (!process.env.ACCESS_TOKEN_SECRET || !process.env.REFRESH_TOKEN_SECRET)) {
+    throw new Error('ACCESS_TOKEN_SECRET and REFRESH_TOKEN_SECRET must be set in production')
+}
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'dev-only-access-secret'
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'dev-only-refresh-secret'
 const ACCESS_TOKEN_EXPIRY = '15m'
 const REFRESH_TOKEN_EXPIRY = '7d'
 

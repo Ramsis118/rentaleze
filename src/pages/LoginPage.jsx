@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const EyeIcon = ({ visible }) => (
@@ -14,6 +14,9 @@ const EyeIcon = ({ visible }) => (
 
 export default function LoginPage() {
     const navigate = useNavigate()
+  const location = useLocation()
+  // Only follow in-site paths (never an outside URL)
+  const from = typeof location.state?.from === 'string' && location.state.from.startsWith('/') ? location.state.from : '/'
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
@@ -41,7 +44,7 @@ export default function LoginPage() {
         setLoading(true)
         try {
             await login(email, password)
-            navigate('/')
+            navigate(from, { replace: true })
         } catch (err) {
             console.error(err)
             setError('Invalid email or password. Please try again.')

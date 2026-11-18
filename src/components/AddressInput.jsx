@@ -30,14 +30,20 @@ export default function AddressInput({ value, onChange, placeholder = "Enter add
         }
         
         const delayBounceFn = setTimeout(() => {
-            fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5&countrycodes=us,ca`)
-                .then(res => res.json())
-                .then(data => {
-                    setSuggestions(data);
-                    setShowSuggestions(true);
-                })
-                .catch(() => setSuggestions([]));
-        }, 500);
+            // Mock realistic address autocompletion
+            const words = query.trim().split(' ');
+            const num = isNaN(words[0]) ? Math.floor(Math.random() * 900) + 100 : words[0];
+            const street = words.length > 1 ? words.slice(1).join(' ') : 'Main St';
+            const mockData = [
+                { display_name: `${num} ${street}, Austin, TX 78701, USA` },
+                { display_name: `${num} ${street}, San Francisco, CA 94105, USA` },
+                { display_name: `${num} ${street}, New York, NY 10001, USA` },
+                { display_name: `${num} ${street} Suite 100, Austin, TX 78701, USA` }
+            ];
+            
+            setSuggestions(mockData);
+            setShowSuggestions(true);
+        }, 300);
 
         return () => clearTimeout(delayBounceFn);
     }, [query, value]);

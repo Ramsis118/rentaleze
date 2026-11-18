@@ -134,7 +134,8 @@ export default function Navbar() {
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-card border border-rl-gray-3 py-2 z-50">
                       <Link to="/dashboard" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">Dashboard</Link>
                       <Link to="/dashboard/messages" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">Messages</Link>
-                      <Link to="/dashboard/bookings" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">My Bookings</Link>
+                      <Link to="/dashboard/listings" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">My Listings</Link>
+                    <Link to="/dashboard/bookings" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">My Bookings</Link>
                       <Link to="/dashboard/saved" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">Saved Items</Link>
                   </div>
                 )}

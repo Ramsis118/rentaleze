@@ -157,3 +157,13 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY (conversation_id) REFERENCES conversations(id),
   FOREIGN KEY (sender_id) REFERENCES users(id)
 );
+-- Pre-launch waitlist (rentaleze.com coming-soon page)
+CREATE TABLE IF NOT EXISTS waitlist (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  role TEXT,            -- 'rent' | 'list' | 'both'
+  zip TEXT,
+  interest TEXT,        -- what they want to rent or list
+  source TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
