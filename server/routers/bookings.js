@@ -5,160 +5,234 @@ import { authenticate } from '../middleware/auth.js'
 
 const router = Router()
 
-// Create booking
+// ─── Booking lifecycle ──────────────────────────────────────────────────────
+//   requested ──accept──▶ accepted ──pickup──▶ active ──return──▶ completed
+//       │                    │
+//       ├──decline──▶ declined
+//       └──cancel───▶ cancelled ◀──cancel── (before pickup)
+//
+// Instant Book listings skip "requested" and start as "accepted".
+// Dates are YYYY-MM-DD. start = pickup day, end = return day; days = end - start.
+
+const RENTER_SERVICE_FEE = 0.12   // platform fee charged to the renter
+const SHIPPING_FEE = 24
+const MAX_DAYS = 90
+const BLOCKING = ['accepted', 'active']   // statuses that hold the item's calendar
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const toDay = (s) => Date.parse(`${s}T00:00:00Z`)
+const todayUTC = () => new Date().toISOString().slice(0, 10)
+const money = (n) => Math.round(n * 100) / 100
+
+function validateDates(startDate, endDate) {
+    if (!DATE_RE.test(startDate || '') || !DATE_RE.test(endDate || '')) return { error: 'Choose a start and end date.' }
+    const start = toDay(startDate), end = toDay(endDate)
+    if (Number.isNaN(start) || Number.isNaN(end)) return { error: 'Those dates are not valid.' }
+    // Allow "today" in any US time zone (server runs on UTC)
+    if (start < toDay(todayUTC()) - 86400000) return { error: 'The start date is in the past.' }
+    const days = Math.round((end - start) / 86400000)
+    if (days < 1) return { error: 'The end date must be after the start date.' }
+    if (days > MAX_DAYS) return { error: `Rentals can be at most ${MAX_DAYS} days.` }
+    return { days }
+}
+
+// Does this listing already have an accepted/active booking overlapping these dates?
+function hasConflict(listingId, startDate, endDate, ignoreBookingId = '') {
+    return !!db.prepare(`
+        SELECT 1 FROM bookings
+        WHERE listing_id = ? AND id != ? AND status IN (${BLOCKING.map(() => '?').join(',')})
+          AND start_date < ? AND end_date > ?
+        LIMIT 1
+    `).get(listingId, ignoreBookingId, ...BLOCKING, endDate, startDate)
+}
+
+const BOOKING_SELECT = `
+    SELECT b.*, l.title, l.image, l.location, l.owner_id, l.owner_name, l.owner_avatar,
+           r.first_name AS renter_first_name, r.last_name AS renter_last_name, r.avatar AS renter_avatar,
+           o.first_name AS owner_first_name, o.last_name AS owner_last_name
+    FROM bookings b
+    JOIN listings l ON l.id = b.listing_id
+    JOIN users r ON r.id = b.user_id
+    JOIN users o ON o.id = l.owner_id
+`
+
+function toBooking(row, viewerId) {
+    const role = row.owner_id === viewerId ? 'owner' : 'renter'
+    const isDemo = row.owner_id?.startsWith('demo-')
+    return {
+        id: row.id,
+        listingId: row.listing_id,
+        title: row.title,
+        image: row.image,
+        location: row.location,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        days: row.days,
+        qty: row.qty,
+        baseTotal: row.base_total,
+        serviceFee: row.service_fee,
+        shippingFee: row.shipping_fee,
+        total: row.total,
+        fulfillment: row.fulfillment,
+        status: row.status === 'pending' ? 'requested' : row.status,
+        intendedUse: row.intended_use,
+        ownerNote: row.owner_note || null,
+        cancelledBy: row.cancelled_by || null,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at || row.created_at,
+        role,
+        ownerName: isDemo ? row.owner_name : `${row.owner_first_name} ${row.owner_last_name?.[0] || ''}.`,
+        renterName: `${row.renter_first_name} ${row.renter_last_name?.[0] || ''}.`,
+        renterAvatar: row.renter_avatar || null,
+        actions: allowedActions(row, viewerId)
+    }
+}
+
+// Which buttons each side may press right now
+function allowedActions(row, viewerId) {
+    const isOwner = row.owner_id === viewerId
+    const isRenter = row.user_id === viewerId
+    const status = row.status === 'pending' ? 'requested' : row.status
+    const started = todayUTC() >= row.start_date
+    const out = []
+    if (isOwner && status === 'requested') out.push('accept', 'decline')
+    if ((isOwner || isRenter) && (status === 'requested' || (status === 'accepted' && !started))) out.push('cancel')
+    if (isOwner && status === 'accepted') out.push('pickup')
+    if (isOwner && status === 'active') out.push('return')
+    return out
+}
+
+const getBookingRow = (id) => db.prepare(`${BOOKING_SELECT} WHERE b.id = ?`).get(id)
+
+// ─── Routes ─────────────────────────────────────────────────────────────────
+
+// Create a booking request (or an instant booking)
 router.post('/', authenticate, (req, res) => {
     try {
-        const { listingId, startDate, endDate, days, qty, fulfillment, intendedUse, shippingAddress, shippingCity, shippingState, shippingZip } = req.body
+        const { listingId, startDate, endDate, qty, fulfillment, intendedUse, shippingAddress, shippingCity, shippingState, shippingZip } = req.body || {}
+        if (!listingId) return res.status(400).json({ error: 'Missing listing.' })
 
-        if (!listingId || !startDate || !endDate || !days) {
-            return res.status(400).json({ error: 'Missing required fields' })
-        }
-
-        // Check if user is verified
         const userStatus = db.prepare('SELECT is_verified, phone_verified FROM users WHERE id = ?').get(req.user.id)
         if (!userStatus.is_verified || !userStatus.phone_verified) {
             return res.status(403).json({ error: 'You must complete ID and Phone Verification before renting items.' })
         }
 
-        // Get listing price
         const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(listingId)
+        if (!listing || listing.status !== 'active') return res.status(404).json({ error: 'Listing not found' })
+        if (listing.owner_id === req.user.id) return res.status(400).json({ error: "You can't book your own item." })
 
-        if (!listing || listing.status !== 'active') {
-            return res.status(404).json({ error: 'Listing not found' })
+        const { error, days } = validateDates(startDate, endDate)
+        if (error) return res.status(400).json({ error })
+
+        if (hasConflict(listing.id, startDate, endDate)) {
+            return res.status(409).json({ error: 'Those dates are already booked. Please choose different dates.' })
         }
 
-        if (listing.owner_id === req.user.id) {
-            return res.status(400).json({ error: "You can't book your own item." })
-        }
+        // One open request per renter per item at a time
+        const open = db.prepare(`
+            SELECT 1 FROM bookings WHERE listing_id = ? AND user_id = ? AND status IN ('requested','pending') AND start_date < ? AND end_date > ?
+        `).get(listing.id, req.user.id, endDate, startDate)
+        if (open) return res.status(409).json({ error: 'You already have a request for these dates.' })
 
-        const baseTotal = days * listing.price_per_day * (qty || 1)
-        const insurance = Math.round(baseTotal * 0.08)
-        const serviceFee = Math.round(baseTotal * 0.12)
-        const shippingFee = fulfillment === 'shipping' ? 24 : 0
-        const total = baseTotal + insurance + serviceFee + shippingFee
+        const quantity = Math.min(Math.max(parseInt(qty, 10) || 1, 1), 20)
+        const ship = fulfillment === 'shipping' && listing.shipping ? 'shipping' : 'pickup'
+        const baseTotal = money(days * listing.price_per_day * quantity)
+        const serviceFee = money(baseTotal * RENTER_SERVICE_FEE)
+        const shippingFee = ship === 'shipping' ? SHIPPING_FEE : 0
+        const total = money(baseTotal + serviceFee + shippingFee)
+        const status = listing.instant_book ? 'accepted' : 'requested'
 
         const bookingId = uuidv4()
-
         db.prepare(`
-      INSERT INTO bookings (id, listing_id, user_id, start_date, end_date, days, qty, fulfillment, base_total, insurance, service_fee, shipping_fee, total, intended_use, shipping_address, shipping_city, shipping_state, shipping_zip)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-            bookingId,
-            listingId,
-            req.user.id,
-            startDate,
-            endDate,
-            days,
-            qty || 1,
-            fulfillment || 'pickup',
-            baseTotal,
-            insurance,
-            serviceFee,
-            shippingFee,
-            total,
-            intendedUse || '',
-            shippingAddress || '',
-            shippingCity || '',
-            shippingState || '',
-            shippingZip || ''
-        )
+            INSERT INTO bookings (id, listing_id, user_id, start_date, end_date, days, qty, fulfillment, base_total, insurance,
+                service_fee, shipping_fee, total, status, intended_use, shipping_address, shipping_city, shipping_state, shipping_zip, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).run(bookingId, listing.id, req.user.id, startDate, endDate, days, quantity, ship, baseTotal, serviceFee, shippingFee,
+            total, status, String(intendedUse || '').slice(0, 500), String(shippingAddress || '').slice(0, 200),
+            String(shippingCity || '').slice(0, 80), String(shippingState || '').slice(0, 40), String(shippingZip || '').slice(0, 10))
 
-        res.status(201).json({
-            id: bookingId,
-            message: 'Booking created successfully',
-            total
-        })
+        res.status(201).json(toBooking(getBookingRow(bookingId), req.user.id))
     } catch (error) {
         console.error('Create booking error:', error)
         res.status(500).json({ error: 'Failed to create booking' })
     }
 })
 
-// Get user's bookings (as renter)
+// Bookings I made (as renter)
 router.get('/my', authenticate, (req, res) => {
     try {
-        const bookings = db.prepare(`
-      SELECT b.*, l.title, l.image, l.location, l.owner_name
-      FROM bookings b
-      JOIN listings l ON b.listing_id = l.id
-      WHERE b.user_id = ?
-      ORDER BY b.created_at DESC
-    `).all(req.user.id)
-
-        res.json(bookings)
+        const rows = db.prepare(`${BOOKING_SELECT} WHERE b.user_id = ? ORDER BY b.start_date DESC, b.created_at DESC`).all(req.user.id)
+        res.json(rows.map(r => toBooking(r, req.user.id)))
     } catch (error) {
         console.error('Get bookings error:', error)
         res.status(500).json({ error: 'Failed to fetch bookings' })
     }
 })
 
-// Get user's rentals (as owner)
+// Bookings on my items (as owner)
 router.get('/rentals', authenticate, (req, res) => {
     try {
-        const bookings = db.prepare(`
-      SELECT b.*, l.title, l.image, l.location, u.first_name, u.last_name, u.avatar as renter_avatar
-      FROM bookings b
-      JOIN listings l ON b.listing_id = l.id
-      JOIN users u ON b.user_id = u.id
-      WHERE l.owner_id = ?
-      ORDER BY b.created_at DESC
-    `).all(req.user.id)
-
-        res.json(bookings)
+        const rows = db.prepare(`${BOOKING_SELECT} WHERE l.owner_id = ? ORDER BY
+            CASE WHEN b.status IN ('requested','pending') THEN 0 ELSE 1 END, b.start_date DESC`).all(req.user.id)
+        res.json(rows.map(r => toBooking(r, req.user.id)))
     } catch (error) {
         console.error('Get rentals error:', error)
         res.status(500).json({ error: 'Failed to fetch rentals' })
     }
 })
 
-// Get single booking
+// One booking (renter or owner only)
 router.get('/:id', authenticate, (req, res) => {
     try {
-        const booking = db.prepare(`
-      SELECT b.*, l.title, l.image, l.location, l.owner_name, l.owner_avatar
-      FROM bookings b
-      JOIN listings l ON b.listing_id = l.id
-      WHERE b.id = ?
-    `).get(req.params.id)
-
-        if (!booking) {
-            return res.status(404).json({ error: 'Booking not found' })
-        }
-
-        if (booking.user_id !== req.user.id) {
-            return res.status(403).json({ error: 'Not authorized' })
-        }
-
-        res.json(booking)
+        const row = getBookingRow(req.params.id)
+        if (!row) return res.status(404).json({ error: 'Booking not found' })
+        if (row.user_id !== req.user.id && row.owner_id !== req.user.id) return res.status(403).json({ error: 'Not authorized' })
+        res.json(toBooking(row, req.user.id))
     } catch (error) {
         console.error('Get booking error:', error)
         res.status(500).json({ error: 'Failed to fetch booking' })
     }
 })
 
-// Cancel booking
-router.put('/:id/cancel', authenticate, (req, res) => {
+// Status changes: accept | decline | cancel | pickup | return
+const TRANSITIONS = {
+    accept: 'accepted',
+    decline: 'declined',
+    cancel: 'cancelled',
+    pickup: 'active',
+    return: 'completed'
+}
+
+router.put('/:id/:action', authenticate, (req, res) => {
     try {
-        const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(req.params.id)
+        const { action } = req.params
+        if (!TRANSITIONS[action]) return res.status(404).json({ error: 'Not found' })
 
-        if (!booking) {
-            return res.status(404).json({ error: 'Booking not found' })
+        const row = getBookingRow(req.params.id)
+        if (!row) return res.status(404).json({ error: 'Booking not found' })
+        if (row.user_id !== req.user.id && row.owner_id !== req.user.id) return res.status(403).json({ error: 'Not authorized' })
+
+        if (!allowedActions(row, req.user.id).includes(action)) {
+            return res.status(400).json({ error: `This booking can't be ${TRANSITIONS[action]} right now.` })
+        }
+        if (action === 'accept' && hasConflict(row.listing_id, row.start_date, row.end_date, row.id)) {
+            return res.status(409).json({ error: 'You already accepted another booking for these dates.' })
         }
 
-        if (booking.user_id !== req.user.id) {
-            return res.status(403).json({ error: 'Not authorized' })
-        }
+        const note = String(req.body?.note || '').trim().slice(0, 300) || null
+        const cancelledBy = action === 'cancel' ? (row.owner_id === req.user.id ? 'owner' : 'renter') : row.cancelled_by
 
-        if (booking.status === 'cancelled') {
-            return res.status(400).json({ error: 'Booking already cancelled' })
-        }
+        // Guard against two clicks racing: only update if the status is still what we checked
+        const result = db.prepare(`
+            UPDATE bookings SET status = ?, cancelled_by = ?, owner_note = COALESCE(?, owner_note), updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND status = ?
+        `).run(TRANSITIONS[action], cancelledBy, note, row.id, row.status)
+        if (result.changes === 0) return res.status(409).json({ error: 'This booking was just updated. Please refresh.' })
 
-        db.prepare(`UPDATE bookings SET status = 'cancelled' WHERE id = ?`).run(req.params.id)
-
-        res.json({ message: 'Booking cancelled successfully' })
+        res.json(toBooking(getBookingRow(row.id), req.user.id))
     } catch (error) {
-        console.error('Cancel booking error:', error)
-        res.status(500).json({ error: 'Failed to cancel booking' })
+        console.error('Booking action error:', error)
+        res.status(500).json({ error: 'Failed to update booking' })
     }
 })
 

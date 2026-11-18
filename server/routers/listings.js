@@ -234,7 +234,7 @@ router.get('/mine', authenticate, (req, res) => {
         const rows = db.prepare(`${BASE_SELECT} WHERE l.owner_id = ? AND l.status != 'deleted' ORDER BY l.created_at DESC`).all(req.user.id)
         const counts = db.prepare(`
             SELECT listing_id, COUNT(*) AS n FROM bookings
-            WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = ?) AND status != 'cancelled'
+            WHERE listing_id IN (SELECT id FROM listings WHERE owner_id = ?) AND status NOT IN ('cancelled', 'declined')
             GROUP BY listing_id
         `).all(req.user.id)
         const byId = Object.fromEntries(counts.map(c => [c.listing_id, c.n]))
@@ -362,7 +362,7 @@ router.delete('/:id', authenticate, (req, res) => {
         const today = new Date().toISOString().slice(0, 10)
         const upcoming = db.prepare(`
             SELECT COUNT(*) AS n FROM bookings
-            WHERE listing_id = ? AND status IN ('pending', 'confirmed', 'active') AND end_date >= ?
+            WHERE listing_id = ? AND status IN ('requested', 'pending', 'accepted', 'active') AND end_date >= ?
         `).get(existing.id, today).n
         if (upcoming > 0) {
             return res.status(409).json({ error: 'This item has upcoming rentals. Pause it instead, or wait until they finish.' })

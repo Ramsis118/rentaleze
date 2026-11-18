@@ -194,9 +194,8 @@ function BookingCard({ listing }) {
   const msPerDay = 86400000
   const days = Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / msPerDay))
   const rentalTotal = days * listing.pricePerDay
-  const insuranceFee = Math.round(rentalTotal * 0.08)
   const serviceFee = Math.round(rentalTotal * 0.12)
-  const total = rentalTotal + insuranceFee + serviceFee
+  const total = rentalTotal + serviceFee
   const instantBook = listing.instantBook
 
   const handleBook = async () => {
@@ -211,8 +210,8 @@ function BookingCard({ listing }) {
     }
     setSubmitting(true)
     try {
-      await api.createBooking({ listingId: listing.id, startDate, endDate, days, fulfillment: 'pickup' })
-      setBooked(true)
+      const booking = await api.createBooking({ listingId: listing.id, startDate, endDate, fulfillment: 'pickup' })
+      setBooked(booking.status)
     } catch (err) {
       setBookingError(err.message)
     } finally {
@@ -228,10 +227,11 @@ function BookingCard({ listing }) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-lg font-extrabold text-rl-dark mb-1">Request Sent!</h3>
+        <h3 className="text-lg font-extrabold text-rl-dark mb-1">{booked === 'accepted' ? 'Booked!' : 'Request Sent!'}</h3>
         <p className="text-sm text-rl-gray mb-5">
-          Your request for {days} day{days !== 1 ? 's' : ''} has been sent to {listing.ownerName}.
-          You can track it in your bookings.
+          {booked === 'accepted'
+            ? `You're confirmed for ${days} day${days !== 1 ? 's' : ''}. Pickup details are in your bookings.`
+            : `Your request for ${days} day${days !== 1 ? 's' : ''} has been sent to ${listing.ownerName}. You'll see their answer in your bookings.`}
         </p>
         <Link to="/dashboard/bookings" className="btn-outline text-sm w-full justify-center">
           View My Bookings
@@ -306,12 +306,6 @@ function BookingCard({ listing }) {
             <span className="text-rl-dark font-medium">${rentalTotal}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-rl-gray flex items-center gap-1">
-              <span className="text-xs">🛡️</span> Insurance fee
-            </span>
-            <span className="text-rl-dark font-medium">${insuranceFee}</span>
-          </div>
-          <div className="flex justify-between text-sm">
             <span className="text-rl-gray">Service fee</span>
             <span className="text-rl-dark font-medium">${serviceFee}</span>
           </div>
@@ -360,7 +354,7 @@ function BookingCard({ listing }) {
         <div className="flex items-start gap-2 pt-1">
           <span className="text-rl-blue shrink-0 mt-0.5"><ShieldIcon /></span>
           <p className="text-xs text-rl-gray-2 leading-relaxed">
-            Every rental includes <span className="font-semibold text-rl-dark">damage insurance</span> and is backed by the <span className="font-semibold text-rl-dark">Rentaleze Guarantee</span>. Free cancellation up to 48 hrs before rental.
+            You can cancel any time before pickup. <span className="font-semibold text-rl-dark">Damage protection is coming soon</span> — until then, read the owner's rules and photograph the item at pickup.
           </p>
         </div>
       </div>
@@ -678,12 +672,7 @@ export default function ListingDetailPage() {
                     Verified Owner
                   </span>
                 )}
-                {listing.badges.includes('Insured') && (
-                  <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-emerald-200">
-                    🛡️ Insured
-                  </span>
-                )}
-                {listing.badges.includes('Instant Book') && (
+                                {listing.badges.includes('Instant Book') && (
                   <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-200">
                     ⚡ Instant Book
                   </span>
@@ -749,7 +738,7 @@ export default function ListingDetailPage() {
                 <div className="pt-2 mt-2 border-t border-rl-gray-3">
                   <p className="text-xs text-rl-gray-2 flex items-center gap-1.5">
                     <span>📋</span>
-                    <span>Free cancellation up to 48 hours before rental start. See full cancellation policy.</span>
+                    <span>You can cancel any time before pickup.</span>
                   </p>
                 </div>
               </div>
@@ -794,7 +783,7 @@ export default function ListingDetailPage() {
               {/* Quick trust row */}
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 {[
-                  { icon: '🛡️', label: 'Insured' },
+                  { icon: '🛡️', label: 'Verified' },
                   { icon: '💳', label: 'Secure Pay' },
                   { icon: '↩️', label: 'Free Cancel' },
                 ].map(item => (

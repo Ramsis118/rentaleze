@@ -63,7 +63,7 @@ const OWNER_STEPS = [
       </svg>
     ),
     title: 'Get Paid',
-    desc: 'Payment is released automatically after the rental. Every item is covered by built-in insurance.',
+    desc: 'Payment is released to you after the rental ends.',
   },
 ]
 

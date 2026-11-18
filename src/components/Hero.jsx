@@ -25,7 +25,7 @@ const POPULAR_SEARCHES = [
 ]
 
 const TRUST_BADGES = [
-  { icon: '🛡️', text: 'Every rental insured' },
+  { icon: '🛡️', text: 'Two-way reviews' },
   { icon: '✅', text: 'Verified users' },
   { icon: '🇺🇸', text: 'Nationwide' },
 ]
@@ -75,7 +75,7 @@ export default function Hero() {
 
         <p className="text-lg text-rl-gray-2 max-w-2xl mx-auto mb-10 leading-relaxed">
           The trusted marketplace where anyone can rent what they need or earn
-          money from items sitting idle. Every rental is covered by built-in insurance.
+          money from items sitting idle.
         </p>
 
         {/* Search card */}
@@ -145,9 +145,9 @@ export default function Hero() {
       <div className="relative mt-14 border-t border-white/10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 grid grid-cols-3 gap-4 text-center">
           {[
-            { num: '10,000+', label: 'Items Listed' },
+            { num: 'Any', label: 'Category' },
             { num: '$0', label: 'Listing Fee' },
-            { num: '100%', label: 'Insured Rentals' },
+            { num: '2-way', label: 'Reviews' },
           ].map(stat => (
             <div key={stat.label}>
               <div className="text-2xl sm:text-3xl font-extrabold text-white">{stat.num}</div>

@@ -8,8 +8,8 @@ const PILLARS = [
           d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
       </svg>
     ),
-    title: 'Insured Every Rental',
-    desc: 'Every transaction includes built-in damage and theft protection. Owners earn with confidence. Renters borrow without risk.',
+    title: 'Damage Protection (Coming Soon)',
+    desc: 'We are building damage protection into every rental. Until it launches, owners set their own rules and both sides photograph the item at pickup and return.',
     highlight: true,
   },
   {
@@ -74,8 +74,8 @@ export default function TrustSection() {
             Trust is built into everything
           </h2>
           <p className="text-rl-gray max-w-xl mx-auto text-base">
-            Insurance, verification, and fair dispute resolution aren't add-ons —
-            they're baked into every transaction from day one.
+            Verification, two-way reviews and fair dispute resolution are built in
+            from day one.
           </p>
         </div>
 

@@ -5,7 +5,6 @@ const LINKS = {
   Renters: [
     { label: 'Browse All Items', to: '/browse' },
     { label: 'How to Rent', to: '#' },
-    { label: 'Insurance Coverage', to: '#' },
     { label: 'Shipping Guide', to: '#' },
   ],
   Owners: [
@@ -23,7 +22,6 @@ const LINKS = {
   Legal: [
     { label: 'Terms of Service', to: '#' },
     { label: 'Privacy Policy', to: '#' },
-    { label: 'Insurance Policy', to: '#' },
     { label: 'Cookie Policy', to: '#' },
   ],
 }
@@ -61,7 +59,7 @@ export default function Footer() {
               The trusted marketplace to rent anything or earn from everything you own.
             </p>
             <div className="text-xs text-rl-gray">
-              🛡️ Every rental insured &nbsp;•&nbsp; 🇺🇸 US Nationwide
+              🛡️ Verified members &nbsp;•&nbsp; 🇺🇸 US Nationwide
             </div>
           </div>
 

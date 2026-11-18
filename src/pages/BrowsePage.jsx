@@ -300,10 +300,7 @@ function ListListingCard({ listing }) {
             {listing.distance && <span>{listing.distance} away</span>}
           </div>
           <div className="flex flex-wrap gap-1.5 mt-2">
-            {listing.badges.includes('Insured') && (
-              <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">🛡️ Insured</span>
-            )}
-            {listing.badges.includes('Instant Book') && (
+                        {listing.badges.includes('Instant Book') && (
               <span className="text-xs font-medium text-rl-blue-600 bg-rl-blue-50 border border-rl-blue-200 px-2 py-0.5 rounded-full">⚡ Instant Book</span>
             )}
             {listing.shipping && (

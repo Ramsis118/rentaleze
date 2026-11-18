@@ -3,6 +3,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api'
 class ApiClient {
     constructor() {
         this.accessToken = localStorage.getItem('accessToken')
+        this.refreshing = null // shared promise so parallel requests refresh only once
     }
 
     setToken(token) {
@@ -14,7 +15,38 @@ class ApiClient {
         }
     }
 
-    async request(endpoint, options = {}) {
+    setSession({ accessToken, refreshToken }) {
+        this.setToken(accessToken)
+        if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
+    }
+
+    clearSession() {
+        this.setToken(null)
+        localStorage.removeItem('refreshToken')
+    }
+
+    // Swap the refresh token for a fresh pair. Returns true on success.
+    async refreshSession() {
+        const refreshToken = localStorage.getItem('refreshToken')
+        if (!refreshToken) return false
+        if (!this.refreshing) {
+            this.refreshing = fetch(`${API_BASE}/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+            })
+                .then(async (r) => {
+                    if (!r.ok) return false
+                    this.setSession(await r.json())
+                    return true
+                })
+                .catch(() => false)
+                .finally(() => { this.refreshing = null })
+        }
+        return this.refreshing
+    }
+
+    async request(endpoint, options = {}, retried = false) {
         const headers = {
             ...options.headers
         }
@@ -31,6 +63,13 @@ class ApiClient {
             ...options,
             headers
         })
+
+        // Access tokens last 15 minutes: refresh quietly and try once more
+        if (response.status === 401 && !retried && !endpoint.startsWith('/auth/') && localStorage.getItem('refreshToken')) {
+            if (await this.refreshSession()) return this.request(endpoint, options, true)
+            this.clearSession()
+            window.dispatchEvent(new Event('auth:expired'))
+        }
 
         let data
         try {
@@ -52,7 +91,7 @@ class ApiClient {
             method: 'POST',
             body: JSON.stringify(userData)
         })
-        this.setToken(data.accessToken)
+        this.setSession(data)
         return data
     }
 
@@ -61,22 +100,30 @@ class ApiClient {
             method: 'POST',
             body: JSON.stringify({ email, password })
         })
-        this.setToken(data.accessToken)
+        this.setSession(data)
         return data
     }
 
     async logout() {
         const refreshToken = localStorage.getItem('refreshToken')
-        await this.request('/auth/logout', {
-            method: 'POST',
-            body: JSON.stringify({ refreshToken })
-        })
-        this.setToken(null)
-        localStorage.removeItem('refreshToken')
+        try {
+            await this.request('/auth/logout', {
+                method: 'POST',
+                body: JSON.stringify({ refreshToken })
+            })
+        } finally {
+            this.clearSession()
+        }
     }
 
     async getCurrentUser() {
-        return this.request('/auth/me')
+        try {
+            return await this.request('/auth/me')
+        } catch (err) {
+            // /auth/me is not auto-retried above (it's an /auth route), so refresh here
+            if (await this.refreshSession()) return this.request('/auth/me')
+            throw err
+        }
     }
 
     // Listings
@@ -133,10 +180,20 @@ class ApiClient {
         return this.request('/bookings/my')
     }
 
-    async cancelBooking(id) {
-        return this.request(`/bookings/${id}/cancel`, {
-            method: 'PUT'
+    async getOwnerBookings() {
+        return this.request('/bookings/rentals')
+    }
+
+    // action: accept | decline | cancel | pickup | return
+    async bookingAction(id, action, note) {
+        return this.request(`/bookings/${id}/${action}`, {
+            method: 'PUT',
+            body: JSON.stringify(note ? { note } : {})
         })
+    }
+
+    async cancelBooking(id) {
+        return this.bookingAction(id, 'cancel')
     }
 }
 

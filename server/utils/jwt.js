@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken'
+import { randomUUID } from 'crypto'
 
 // In production the secrets must come from the environment. A built-in fallback
 // would let anyone who reads this code forge a login for any account.
@@ -20,7 +21,8 @@ export function generateAccessToken(user) {
 
 export function generateRefreshToken(user) {
     return jwt.sign(
-        { userId: user.id, type: 'refresh' },
+        // jti makes every refresh token unique, even two issued in the same second
+        { userId: user.id, type: 'refresh', jti: randomUUID() },
         REFRESH_TOKEN_SECRET,
         { expiresIn: REFRESH_TOKEN_EXPIRY }
     )

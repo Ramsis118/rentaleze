@@ -15,30 +15,6 @@ const ArrowRightIcon = () => (
   </svg>
 )
 
-// Testimonials
-const TESTIMONIALS = [
-  {
-    name: 'Jordan M.',
-    location: 'Austin, TX',
-    avatar: 'https://i.pravatar.cc/60?img=32',
-    rating: 5,
-    text: 'Rented a power washer for the weekend — saved $400 vs. buying. The insurance gave me peace of mind and the owner was super responsive.',
-  },
-  {
-    name: 'Samantha P.',
-    location: 'Denver, CO',
-    avatar: 'https://i.pravatar.cc/60?img=48',
-    rating: 5,
-    text: 'I listed my camera kit on a whim and made $600 last month while it sat in my closet. Rentaleze handles everything — payments, insurance, all of it.',
-  },
-  {
-    name: 'Marcus L.',
-    location: 'Chicago, IL',
-    avatar: 'https://i.pravatar.cc/60?img=11',
-    rating: 5,
-    text: 'Planned a camping trip in 2 days. Found a tent, sleeping bags, and a camp stove all from local owners. Easy, affordable, insured.',
-  },
-]
 
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState('all')
@@ -128,14 +104,14 @@ export default function HomePage() {
               </h2>
               <p className="text-rl-gray text-base leading-relaxed mb-8">
                 The average American household has $3,000 worth of rarely-used items.
-                Rentaleze turns that into passive income — with built-in insurance,
-                automatic payments, and a platform that handles everything.
+                Rentaleze turns that into income — with verified renters, two-way
+                reviews, and a platform that handles the booking.
               </p>
 
               <div className="space-y-4 mb-8">
                 {[
-                  { icon: '💰', stat: 'Avg $450/mo', desc: 'earned by active owners' },
-                  { icon: '🛡️', stat: 'Every rental', desc: 'insured, no extra cost to you' },
+                  { icon: '💰', stat: 'Earn', desc: 'from things you already own' },
+                  { icon: '🛡️', stat: 'You set', desc: 'the price, rules and dates' },
                   { icon: '⚡', stat: '$0 listing fee', desc: 'forever — only pay when you earn' },
                 ].map(item => (
                   <div key={item.stat} className="flex items-center gap-4">
@@ -203,43 +179,9 @@ export default function HomePage() {
 
               {/* Floating badge */}
               <div className="absolute -top-4 -right-4 bg-rl-blue text-white text-xs font-bold px-4 py-2 rounded-2xl shadow-lg">
-                🛡️ All Insured
+                Example
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-16 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-10">
-            <div className="section-label mb-2">Reviews</div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-rl-dark">
-              Real people, real rentals
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="bg-rl-gray-4/60 border border-rl-gray-3 rounded-2xl p-6">
-                {/* Stars */}
-                <div className="flex gap-0.5 mb-3">
-                  {Array.from({ length: t.rating }).map((_, j) => (
-                    <svg key={j} className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <p className="text-sm text-rl-dark-3 leading-relaxed mb-4">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <img src={t.avatar} alt={t.name} className="w-9 h-9 rounded-full object-cover" />
-                  <div>
-                    <p className="text-sm font-semibold text-rl-dark">{t.name}</p>
-                    <p className="text-xs text-rl-gray-2">{t.location}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>

@@ -220,7 +220,7 @@ export default function CheckoutPage() {
                             <h2 className="font-extrabold text-rl-dark mb-3">Rental Terms</h2>
                             <div className="bg-rl-gray-4 rounded-xl p-4 text-xs text-rl-dark-3 leading-relaxed space-y-2 max-h-48 overflow-y-auto mb-4 border border-rl-gray-3">
                                 <p><strong>Late Returns:</strong> 1.5× daily rate per late day. After 5 days, full replacement value charged.</p>
-                                <p><strong>Damage:</strong> Renter responsible for damage beyond normal wear. Insurance covers eligible claims.</p>
+                                <p><strong>Damage:</strong> Renter responsible for damage beyond normal wear.</p>
                                 <p><strong>Cancellation:</strong> Free up to 48 hours before rental. 50% charge within 48 hours.</p>
                                 <p><strong>Shipping:</strong> Two prepaid labels included. Return before rental end date.</p>
                             </div>
@@ -252,7 +252,7 @@ export default function CheckoutPage() {
                             </div>
                             <div className="border-t border-rl-gray-3 pt-3 space-y-1.5 mb-4 text-sm">
                                 <div className="flex justify-between text-rl-gray"><span>Subtotal</span><span>${cartTotal}</span></div>
-                                <div className="flex justify-between text-rl-gray"><span>Insurance (8%)</span><span>${Math.round(cartTotal * 0.08)}</span></div>
+                                
                                 <div className="flex justify-between text-rl-gray"><span>Service fee (12%)</span><span>${Math.round(cartTotal * 0.12)}</span></div>
                                 <div className="flex justify-between font-extrabold text-rl-dark text-base pt-2 border-t border-rl-gray-3">
                                     <span>Total</span>
@@ -276,7 +276,7 @@ export default function CheckoutPage() {
                                     'Place Order →'
                                 )}
                             </button>
-                            <p className="text-xs text-center text-rl-gray-2 mt-3">🔒 Secure checkout · Rentaleze Guarantee</p>
+                            <p className="text-xs text-center text-rl-gray-2 mt-3">🔒 Payments are not live yet</p>
                         </div>
                     </div>
                 </div>

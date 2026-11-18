@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import api from '../api'
 
 const AuthContext = createContext(null)
@@ -9,42 +9,52 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         const initAuth = async () => {
-            const token = localStorage.getItem('accessToken')
-            if (token) {
+            if (localStorage.getItem('accessToken') || localStorage.getItem('refreshToken')) {
                 try {
-                    const userData = await api.getCurrentUser()
-                    setUser(userData)
+                    setUser(await api.getCurrentUser())
                 } catch {
-                    localStorage.removeItem('accessToken')
-                    localStorage.removeItem('refreshToken')
+                    api.clearSession()
                 }
             }
             setLoading(false)
         }
         initAuth()
+
+        // The API client fires this when a session can no longer be refreshed
+        const onExpired = () => setUser(null)
+        window.addEventListener('auth:expired', onExpired)
+        return () => window.removeEventListener('auth:expired', onExpired)
     }, [])
 
     const login = async (email, password) => {
         const data = await api.login(email, password)
-        localStorage.setItem('refreshToken', data.refreshToken)
         setUser(data.user)
         return data.user
     }
 
     const signup = async (userData) => {
         const data = await api.signup(userData)
-        localStorage.setItem('refreshToken', data.refreshToken)
         setUser(data.user)
         return data.user
     }
 
     const logout = async () => {
-        await api.logout()
-        setUser(null)
+        try {
+            await api.logout()
+        } finally {
+            setUser(null)
+        }
     }
 
+    // Re-read the account after profile or verification changes
+    const refreshUser = useCallback(async () => {
+        try {
+            setUser(await api.getCurrentUser())
+        } catch { /* keep current state */ }
+    }, [])
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, signup, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     )

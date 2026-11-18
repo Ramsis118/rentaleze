@@ -40,13 +40,18 @@ function upgradeDatabase() {
         ['listings', 'instant_book', 'INTEGER DEFAULT 0'],
         ['listings', 'item_condition', 'TEXT'],
         ['listings', 'is_demo', 'INTEGER DEFAULT 0'],
-        ['users', 'is_demo', 'INTEGER DEFAULT 0']
+        ['users', 'is_demo', 'INTEGER DEFAULT 0'],
+        ['bookings', 'updated_at', 'TEXT'],
+        ['bookings', 'cancelled_by', 'TEXT'],
+        ['bookings', 'owner_note', 'TEXT']
     ]
 
     for (const [table, name, type] of columns) {
         const exists = db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === name)
         if (!exists) db.prepare(`ALTER TABLE ${table} ADD COLUMN ${name} ${type}`).run()
     }
+    // Old bookings used "pending" for requests
+    db.prepare(`UPDATE bookings SET status = 'requested' WHERE status = 'pending'`).run()
     db.exec(`
         CREATE INDEX IF NOT EXISTS idx_listings_status_category ON listings(status, category);
         CREATE INDEX IF NOT EXISTS idx_listings_owner ON listings(owner_id);

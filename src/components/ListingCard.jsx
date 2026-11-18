@@ -106,13 +106,7 @@ export default function ListingCard({ listing }) {
 
         {/* Feature badges */}
         <div className="flex flex-wrap gap-1.5 mt-auto">
-          {listing.badges.includes('Insured') && (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-              <ShieldIcon />
-              Insured
-            </span>
-          )}
-          {listing.badges.includes('Instant Book') && (
+                    {listing.badges.includes('Instant Book') && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-rl-blue-600 bg-rl-blue-50 border border-rl-blue-200 px-2 py-0.5 rounded-full">
               ⚡ Instant Book
             </span>
