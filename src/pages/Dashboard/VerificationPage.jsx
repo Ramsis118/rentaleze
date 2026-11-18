@@ -1,252 +1,195 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api'
-import AddressInput from '../../components/AddressInput'
+
+function StepCard({ number, title, done, children }) {
+    return (
+        <div className={`border rounded-2xl p-5 sm:p-6 ${done ? 'border-emerald-200 bg-emerald-50/40' : 'border-rl-gray-3 bg-white'}`}>
+            <div className="flex items-start gap-4">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold shrink-0 ${done ? 'bg-emerald-500 text-white' : 'bg-rl-blue-50 text-rl-blue-600'}`}>
+                    {done ? '✓' : number}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h2 className="text-lg font-bold text-rl-dark mb-1">{title}</h2>
+                    {children}
+                </div>
+            </div>
+        </div>
+    )
+}
 
 export default function VerificationPage() {
-    const { user } = useAuth()
-    const [step, setStep] = useState(1)
-    const [loading, setLoading] = useState(false)
+    const { refreshUser } = useAuth()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const [status, setStatus] = useState(null)
     const [error, setError] = useState('')
+    const [busy, setBusy] = useState('')
+    const [phone, setPhone] = useState('')
+    const [codeSent, setCodeSent] = useState(false)
+    const [code, setCode] = useState('')
 
-    // Step 1: Address
-    const [address, setAddress] = useState(user?.address || '')
-    
-    // Step 2: IDs
-    const [idFront, setIdFront] = useState(null)
-    const [idBack, setIdBack] = useState(null)
-    
-    // Step 3: Phone & OTP
-    const [phone, setPhone] = useState(user?.phone || '')
-    const [otpSent, setOtpSent] = useState(false)
-    const [otpCode, setOtpCode] = useState('')
+    const load = useCallback(async () => {
+        try {
+            const s = await api.getVerificationStatus()
+            setStatus(s)
+            if (s.phone && !phone) setPhone(s.phone)
+            return s
+        } catch (err) {
+            setError(err.message)
+        }
+    }, [phone])
 
-    // Completion Status
-    const isVerified = user?.isVerified === 1 && user?.phoneVerified === 1
+    useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleAddressSubmit = async (e) => {
+    // Back from Stripe: the result is usually ready right away, but can take a minute
+    useEffect(() => {
+        if (searchParams.get('returned') !== '1') return
+        let tries = 0
+        const timer = setInterval(async () => {
+            tries++
+            const s = await load()
+            if (!s || s.idStatus !== 'pending' || tries >= 10) {
+                clearInterval(timer)
+                setSearchParams({}, { replace: true })
+                refreshUser()
+            }
+        }, 3000)
+        return () => clearInterval(timer)
+    }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const run = async (key, fn) => {
+        setBusy(key)
+        setError('')
+        try { await fn() } catch (err) { setError(err.message) } finally { setBusy('') }
+    }
+
+    const startId = () => run('id', async () => {
+        const r = await api.startIdentityCheck()
+        if (r.url) { window.location.href = r.url; return }
+        if (r.dev) {
+            setStatus(await api.devCompleteIdentity())
+            refreshUser()
+        }
+    })
+
+    const sendCode = (e) => {
+        e?.preventDefault()
+        run('send', async () => {
+            const r = await api.sendPhoneCode(phone)
+            setPhone(r.phone)
+            setCodeSent(true)
+        })
+    }
+
+    const checkCode = (e) => {
         e.preventDefault()
-        setError('')
-        setLoading(true)
-        try {
-            await api.request('/users/profile', {
-                method: 'PUT',
-                body: JSON.stringify({ 
-                    firstName: user.firstName, 
-                    lastName: user.lastName, 
-                    address,
-                    phone: user.phone || phone,
-                    bio: user.bio || ''
-                })
-            })
-            setStep(2)
-        } catch (err) {
-            setError('Failed to save address')
-        } finally {
-            setLoading(false)
-        }
+        run('check', async () => {
+            setStatus(await api.checkPhoneCode(code))
+            setCodeSent(false)
+            setCode('')
+            refreshUser()
+        })
     }
 
-    const handleIdSubmit = async (e) => {
-        e.preventDefault()
-        if (!idFront || !idBack) {
-            setError('Please upload both front and back of your ID')
-            return
-        }
-        setError('')
-        setLoading(true)
-        try {
-            const formData = new FormData()
-            formData.append('id_front', idFront)
-            formData.append('id_back', idBack)
-            
-            await api.request('/users/profile/verification', {
-                method: 'POST',
-                body: formData // Fetch will auto-set multipart headers
-            }, true) // Passing true to tell our API client not to stringify it
-            
-            setStep(3)
-        } catch (err) {
-            setError('Failed to upload ID documents')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleSendOTP = async () => {
-        if (!phone) {
-            setError('Please enter a phone number')
-            return
-        }
-        setError('')
-        setLoading(true)
-        try {
-            await api.request('/users/profile', {
-                method: 'PUT',
-                body: JSON.stringify({ 
-                    firstName: user.firstName, 
-                    lastName: user.lastName, 
-                    phone,
-                    address: user.address || address,
-                    bio: user.bio || ''
-                })
-            })
-            setOtpSent(true)
-        } catch (err) {
-            setError('Failed to save phone number')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleVerifyOTP = async (e) => {
-        e.preventDefault()
-        setError('')
-        setLoading(true)
-        try {
-            await api.request('/users/profile/verify-phone', {
-                method: 'POST',
-                body: JSON.stringify({ code: otpCode })
-            })
-            
-            // Force a hard reload so AuthContext picks up the new roles from JWT immediately
-            window.location.reload()
-            
-        } catch (err) {
-            setError('Verification failed. Use 123456 as the demo code.')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    if (isVerified) {
+    if (!status) {
         return (
-            <div className="text-center py-16 max-w-lg mx-auto">
-                <div className="w-20 h-20 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
-                    ✓
-                </div>
-                <h1 className="text-2xl font-extrabold text-rl-dark mb-2">You're Verified!</h1>
-                <p className="text-rl-gray">Your identity and phone number have been successfully verified. You now have full access to rent and list items on Rentaleze.</p>
+            <div className="py-16 flex justify-center">
+                {error ? <p className="text-red-600 text-sm">{error}</p>
+                    : <div className="animate-spin w-8 h-8 rounded-full border-4 border-rl-gray-3 border-t-rl-blue" />}
             </div>
         )
     }
 
-    return (
-        <div className="max-w-xl mx-auto">
-            <h1 className="text-2xl font-extrabold text-rl-dark mb-6">Identity Verification</h1>
-            
-            {/* Progress indicators */}
-            <div className="flex items-center gap-2 mb-8">
-                <div className={`h-2 flex-1 rounded-full ${step >= 1 ? 'bg-rl-blue' : 'bg-rl-gray-4'}`} />
-                <div className={`h-2 flex-1 rounded-full ${step >= 2 ? 'bg-rl-blue' : 'bg-rl-gray-4'}`} />
-                <div className={`h-2 flex-1 rounded-full ${step >= 3 ? 'bg-rl-blue' : 'bg-rl-gray-4'}`} />
+    if (status.fullyVerified) {
+        return (
+            <div className="text-center py-16 max-w-lg mx-auto">
+                <div className="w-20 h-20 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">✓</div>
+                <h1 className="text-2xl font-extrabold text-rl-dark mb-2">You're verified</h1>
+                <p className="text-rl-gray">Your ID and phone number are confirmed. A “Verified” badge now shows on your profile and listings.</p>
             </div>
+        )
+    }
 
-            {error && (
-                <div className="bg-red-50 text-red-700 border border-red-200 p-4 rounded-xl mb-6 text-sm">{error}</div>
-            )}
+    const idDone = status.idStatus === 'verified'
 
-            {/* STEP 1 */}
-            {step === 1 && (
-                <form onSubmit={handleAddressSubmit} className="space-y-6">
-                    <div>
-                        <h2 className="text-lg font-bold text-rl-dark mb-1">Step 1: Residential Address</h2>
-                        <p className="text-sm text-rl-gray mb-6">Please enter your primary residential address exactly as it appears on your ID.</p>
-                        
-                        <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Full Address</label>
-                        <AddressInput 
-                            value={address}
-                            onChange={(val) => setAddress(val)}
-                            placeholder="123 Main St, Apt 4B, City, State 12345"
-                        />
-                    </div>
-                    <button type="submit" disabled={loading} className="btn-primary w-full sm:w-auto px-8">
-                        {loading ? 'Saving...' : 'Continue to Step 2'}
-                    </button>
-                </form>
-            )}
+    return (
+        <div className="max-w-2xl mx-auto">
+            <h1 className="text-2xl font-extrabold text-rl-dark mb-2">Get verified</h1>
+            <p className="text-sm text-rl-gray mb-6">
+                Everyone who rents or lists on Rentaleze confirms who they are. It takes about 3 minutes and keeps the community safe.
+            </p>
 
-            {/* STEP 2 */}
-            {step === 2 && (
-                <form onSubmit={handleIdSubmit} className="space-y-6">
-                    <div>
-                        <h2 className="text-lg font-bold text-rl-dark mb-1">Step 2: Upload ID Documents</h2>
-                        <p className="text-sm text-rl-gray mb-6">Upload a clear photo of the front and back of your Driver's License or State ID.</p>
-                        
-                        <div className="grid sm:grid-cols-2 gap-4">
-                            <div className="border border-dashed border-rl-gray-3 rounded-xl p-4 bg-rl-gray-4 hover:border-rl-blue transition-colors">
-                                <label className="cursor-pointer flex flex-col items-center text-center">
-                                    <span className="mb-2 text-2xl">📸</span>
-                                    <span className="text-sm font-bold text-rl-dark mb-1">Upload Front</span>
-                                    <span className="text-xs text-rl-gray truncate max-w-full">{idFront ? idFront.name : 'Select file'}</span>
-                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => setIdFront(e.target.files[0])} />
-                                </label>
-                            </div>
-                            
-                            <div className="border border-dashed border-rl-gray-3 rounded-xl p-4 bg-rl-gray-4 hover:border-rl-blue transition-colors">
-                                <label className="cursor-pointer flex flex-col items-center text-center">
-                                    <span className="mb-2 text-2xl">📸</span>
-                                    <span className="text-sm font-bold text-rl-dark mb-1">Upload Back</span>
-                                    <span className="text-xs text-rl-gray truncate max-w-full">{idBack ? idBack.name : 'Select file'}</span>
-                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => setIdBack(e.target.files[0])} />
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="flex gap-4">
-                        <button type="button" onClick={() => setStep(1)} className="btn-outline px-8 disabled:opacity-50" disabled={loading}>Back</button>
-                        <button type="submit" disabled={loading} className="btn-primary flex-1 px-8">
-                            {loading ? 'Uploading...' : 'Continue to Step 3'}
-                        </button>
-                    </div>
-                </form>
-            )}
+            {error && <div className="bg-red-50 text-red-700 border border-red-200 p-4 rounded-xl mb-6 text-sm">{error}</div>}
 
-            {/* STEP 3 */}
-            {step === 3 && (
-                <div className="space-y-6">
-                    <div>
-                        <h2 className="text-lg font-bold text-rl-dark mb-1">Step 3: Phone Verification</h2>
-                        <p className="text-sm text-rl-gray mb-6">We'll send you a 6-digit verification code to confirm your phone number.</p>
-                        
-                        {!otpSent ? (
-                            <div className="flex items-end gap-4">
-                                <div className="flex-1">
-                                    <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Phone Number</label>
-                                    <input 
-                                        type="tel" 
-                                        className="input-field" 
-                                        placeholder="(555) 123-4567"
-                                        value={phone}
-                                        onChange={(e) => setPhone(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <button type="button" onClick={handleSendOTP} disabled={loading} className="btn-primary shrink-0 py-3 px-6 h-[46px] mb-[-1px]">
-                                    {loading ? '...' : 'Send Code'}
+            <div className="space-y-4">
+                <StepCard number={1} title="Verify your ID" done={idDone}>
+                    {idDone ? (
+                        <p className="text-sm text-emerald-700">Your ID is verified.</p>
+                    ) : status.idStatus === 'pending' ? (
+                        <>
+                            <p className="text-sm text-rl-gray mb-3">We're checking your ID. This usually takes under a minute.</p>
+                            <button onClick={load} className="btn-outline text-sm py-2">Refresh status</button>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-sm text-rl-gray mb-3">
+                                You'll take a photo of your driver's license, state ID or passport, then a quick selfie.
+                                Our verification partner, Stripe, checks it securely. Rentaleze never stores pictures of your ID.
+                            </p>
+                            {status.idStatus === 'failed' && status.idError && (
+                                <p className="text-sm text-red-600 mb-3">{status.idError}</p>
+                            )}
+                            {status.identityAvailable ? (
+                                <button onClick={startId} disabled={busy === 'id'} className="btn-primary text-sm disabled:opacity-60">
+                                    {busy === 'id' ? 'Opening…' : status.idStatus === 'failed' ? 'Try again' : 'Verify my ID'}
+                                </button>
+                            ) : (
+                                <p className="text-sm text-amber-700">ID verification is being switched on. Please check back soon.</p>
+                            )}
+                            {status.devMode?.identity && (
+                                <p className="text-xs text-rl-gray-2 mt-2">Development mode: no Stripe key is set, so this will mark you verified.</p>
+                            )}
+                        </>
+                    )}
+                </StepCard>
+
+                <StepCard number={2} title="Confirm your mobile number" done={status.phoneVerified}>
+                    {status.phoneVerified ? (
+                        <p className="text-sm text-emerald-700">{status.phone} is confirmed.</p>
+                    ) : !codeSent ? (
+                        <form onSubmit={sendCode}>
+                            <p className="text-sm text-rl-gray mb-3">We'll text you a 6-digit code. We use your number for rental updates only.</p>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <input type="tel" className="input-field" placeholder="(404) 555-1234" value={phone}
+                                    onChange={(e) => setPhone(e.target.value)} required autoComplete="tel" />
+                                <button type="submit" disabled={busy === 'send' || !status.phoneAvailable} className="btn-primary shrink-0 justify-center disabled:opacity-60">
+                                    {busy === 'send' ? 'Sending…' : 'Text me a code'}
                                 </button>
                             </div>
-                        ) : (
-                            <form onSubmit={handleVerifyOTP}>
-                                <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-1.5">Enter 6-Digit Code (Demo: 123456)</label>
-                                <input 
-                                    type="text" 
-                                    className="input-field mb-4 tracking-widest font-mono text-center text-lg" 
-                                    maxLength={6}
-                                    value={otpCode}
-                                    onChange={(e) => setOtpCode(e.target.value)}
-                                    placeholder="000000"
-                                    required
-                                />
-                                <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-                                    {loading ? 'Verifying...' : 'Verify & Finish'}
+                        </form>
+                    ) : (
+                        <form onSubmit={checkCode}>
+                            <p className="text-sm text-rl-gray mb-3">
+                                Enter the code we sent to {phone}.{' '}
+                                <button type="button" onClick={() => setCodeSent(false)} className="text-rl-blue-600 font-semibold">Change number</button>
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={8}
+                                    className="input-field tracking-widest font-mono text-center text-lg" placeholder="000000"
+                                    value={code} onChange={(e) => setCode(e.target.value)} required />
+                                <button type="submit" disabled={busy === 'check'} className="btn-primary shrink-0 justify-center disabled:opacity-60">
+                                    {busy === 'check' ? 'Checking…' : 'Confirm'}
                                 </button>
-                            </form>
-                        )}
-                    </div>
-                </div>
-            )}
+                            </div>
+                            <button type="button" onClick={sendCode} disabled={!!busy} className="text-xs text-rl-gray hover:text-rl-dark mt-3">
+                                Didn't get it? Send again
+                            </button>
+                            {status.devMode?.sms && <p className="text-xs text-rl-gray-2 mt-2">Development mode: the code is {status.devMode.code}.</p>}
+                        </form>
+                    )}
+                </StepCard>
+            </div>
         </div>
     )
 }

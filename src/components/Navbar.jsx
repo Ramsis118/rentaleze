@@ -137,6 +137,7 @@ export default function Navbar() {
                       <Link to="/dashboard/listings" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">My Listings</Link>
                     <Link to="/dashboard/bookings" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">My Bookings</Link>
                       <Link to="/dashboard/saved" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">Saved Items</Link>
+                      {user.isAdmin && <Link to="/admin" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm font-semibold text-rl-blue-600 hover:bg-rl-gray-4">Admin</Link>}
                   </div>
                 )}
               </div>

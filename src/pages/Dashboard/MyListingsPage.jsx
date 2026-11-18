@@ -6,6 +6,7 @@ const STATUS_STYLES = {
     active: { label: 'Live', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
     paused: { label: 'Paused', className: 'bg-amber-50 text-amber-700 border-amber-200' },
     draft: { label: 'Draft', className: 'bg-rl-gray-4 text-rl-gray border-rl-gray-3' },
+    removed: { label: 'Removed', className: 'bg-red-50 text-red-700 border-red-200' },
 }
 
 export default function MyListingsPage() {
@@ -108,6 +109,9 @@ export default function MyListingsPage() {
                                         {l.location && <> · {l.location}</>}
                                         {' · '}{l.bookingCount} booking{l.bookingCount === 1 ? '' : 's'}
                                     </p>
+                                    {l.moderationNote && (
+                                        <p className="text-xs text-red-700 mt-1">Rentaleze Support: {l.moderationNote}</p>
+                                    )}
 
                                     {confirmDeleteId === l.id ? (
                                         <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -119,6 +123,8 @@ export default function MyListingsPage() {
                                                 Cancel
                                             </button>
                                         </div>
+                                    ) : l.status === 'removed' ? (
+                                        <p className="text-xs text-rl-gray mt-3">This listing can't be edited. Questions? Email support@rentaleze.com.</p>
                                     ) : (
                                         <div className="flex flex-wrap items-center gap-2 mt-3">
                                             <Link to={`/listing/${l.id}`} className="btn-outline text-xs py-1.5 px-3">View</Link>

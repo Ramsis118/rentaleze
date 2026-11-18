@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import { createHash } from 'crypto'
 import { v4 as uuidv4 } from 'uuid'
 import rateLimit from 'express-rate-limit'
-import db from '../db/database.js'
+import db, { adminEmails } from '../db/database.js'
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, verifyAccessToken } from '../utils/jwt.js'
 
 const router = Router()
@@ -32,6 +32,9 @@ export function publicUser(u) {
         role: u.role,
         isVerified: u.is_verified || 0,
         phoneVerified: u.phone_verified || 0,
+        idStatus: u.is_verified === 1 ? 'verified' : (u.id_status || 'none'),
+        isAdmin: u.role === 'admin' || adminEmails().includes(String(u.email || '').toLowerCase()),
+        suspended: !!u.suspended,
         createdAt: u.created_at,
         first_name: u.first_name,
         last_name: u.last_name,

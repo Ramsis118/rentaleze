@@ -7,6 +7,7 @@ import { authenticate } from '../middleware/auth.js'
 import { BASE_SELECT, toListing } from './listings.js'
 
 import { UPLOADS_DIR } from '../utils/paths.js'
+import { toE164 } from '../services/sms.js'
 
 // Configure Multer Storage for file uploads
 const uploadDir = UPLOADS_DIR
@@ -15,8 +16,6 @@ const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         if (file.fieldname === 'avatar') {
             cb(null, path.join(uploadDir, 'avatars'))
-        } else if (file.fieldname === 'id_front' || file.fieldname === 'id_back') {
-            cb(null, path.join(uploadDir, 'ids'))
         } else {
             cb(new Error('Invalid fieldname'))
         }
@@ -43,11 +42,18 @@ router.put('/profile', authenticate, (req, res) => {
             return res.status(400).json({ error: 'First and last name required' })
         }
 
+        // Changing the phone number here un-verifies it until a new code is confirmed
+        const current = db.prepare('SELECT phone FROM users WHERE id = ?').get(req.user.id)
+        const newPhone = phone ? (toE164(phone) || String(phone).slice(0, 20)) : null
+        const phoneChanged = (newPhone || null) !== (current?.phone || null)
+
         db.prepare(`
             UPDATE users 
-            SET first_name = ?, last_name = ?, avatar = ?, bio = ?, phone = ?, address = ?, updated_at = CURRENT_TIMESTAMP
+            SET first_name = ?, last_name = ?, avatar = ?, bio = ?, phone = ?, address = ?,
+                phone_verified = CASE WHEN ? THEN 0 ELSE phone_verified END, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        `).run(firstName, lastName, avatar || null, bio || null, phone || null, address || null, req.user.id)
+        `).run(String(firstName).slice(0, 60), String(lastName).slice(0, 60), avatar || null, bio ? String(bio).slice(0, 1000) : null,
+            newPhone, address || null, phoneChanged ? 1 : 0, req.user.id)
 
         const updatedUser = db.prepare('SELECT id, email, first_name, last_name, avatar, bio, phone, address, role, is_verified, phone_verified, created_at FROM users WHERE id = ?').get(req.user.id)
         res.json(updatedUser)
@@ -71,45 +77,13 @@ router.post('/profile/avatar', authenticate, upload.single('avatar'), (req, res)
     }
 })
 
-// Upload ID Documents
-router.post('/profile/verification', authenticate, upload.fields([{ name: 'id_front', maxCount: 1 }, { name: 'id_back', maxCount: 1 }]), (req, res) => {
-    try {
-        const files = req.files
-        if (!files || !files.id_front || !files.id_back) {
-            return res.status(400).json({ error: 'Both front and back ID images are required' })
-        }
-
-        const idFrontUrl = `/uploads/ids/${files.id_front[0].filename}`
-        const idBackUrl = `/uploads/ids/${files.id_back[0].filename}`
-
-        db.prepare(`
-            UPDATE users SET id_front = ?, id_back = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-        `).run(idFrontUrl, idBackUrl, req.user.id)
-
-        res.json({ message: 'ID documents uploaded successfully' })
-    } catch (error) {
-        console.error('ID upload error:', error)
-        res.status(500).json({ error: 'Failed to upload ID' })
-    }
+// ID photos are no longer uploaded to Rentaleze. Stripe Identity handles the ID check:
+// see server/routers/verification.js (/api/verification/*).
+router.post('/profile/verification', authenticate, (req, res) => {
+    res.status(410).json({ error: 'ID upload has moved. Use Verify my ID on the verification page.' })
 })
-
-// Mock Phone Verification
 router.post('/profile/verify-phone', authenticate, (req, res) => {
-    try {
-        const { code } = req.body
-        if (code !== '123456') {
-            return res.status(400).json({ error: 'Invalid verification code. Enter 123456 for demo.' })
-        }
-
-        db.prepare(`
-            UPDATE users SET phone_verified = 1, is_verified = 2, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-        `).run(req.user.id)
-
-        res.json({ message: 'Phone verified successfully' })
-    } catch (error) {
-        console.error('Phone verification error:', error)
-        res.status(500).json({ error: 'Failed to verify phone' })
-    }
+    res.status(410).json({ error: 'Phone checks have moved. Use the verification page.' })
 })
 
 // Get saved listings
@@ -158,6 +132,44 @@ router.delete('/saved/:listingId', authenticate, (req, res) => {
     } catch (error) {
         console.error('Unsave listing error:', error)
         res.status(500).json({ error: 'Failed to remove saved listing' })
+    }
+})
+
+// Public profile: name, verification badges and reviews (no contact details)
+router.get('/:id/public', (req, res) => {
+    try {
+        const u = db.prepare(`SELECT id, first_name, last_name, avatar, bio, is_verified, phone_verified, created_at, is_demo
+            FROM users WHERE id = ? AND COALESCE(suspended, 0) = 0`).get(req.params.id)
+        if (!u) return res.status(404).json({ error: 'User not found' })
+        const reviews = db.prepare(`
+            SELECT r.rating, r.text, r.created_at, r.reviewer_role, r.user_name AS reviewer_name, r.user_avatar AS reviewer_avatar,
+                   l.title AS listing_title
+            FROM reviews r LEFT JOIN listings l ON l.id = r.listing_id
+            WHERE r.subject_user_id = ? ORDER BY r.created_at DESC LIMIT 50
+        `).all(u.id)
+        const avg = (role) => {
+            const list = reviews.filter(r => r.reviewer_role === role)
+            return list.length ? Math.round(list.reduce((s, r) => s + r.rating, 0) / list.length * 10) / 10 : null
+        }
+        res.json({
+            id: u.id,
+            name: `${u.first_name} ${u.last_name ? u.last_name[0] + '.' : ''}`.trim(),
+            avatar: u.avatar || null,
+            bio: u.bio || '',
+            memberSince: u.created_at ? new Date(u.created_at).getFullYear() : null,
+            idVerified: u.is_verified === 1,
+            phoneVerified: u.phone_verified === 1,
+            asOwner: { rating: avg('renter'), count: reviews.filter(r => r.reviewer_role === 'renter').length },
+            asRenter: { rating: avg('owner'), count: reviews.filter(r => r.reviewer_role === 'owner').length },
+            reviews: reviews.map(r => ({
+                rating: r.rating, text: r.text, createdAt: r.created_at,
+                about: r.reviewer_role === 'renter' ? 'owner' : 'renter',
+                reviewerName: r.reviewer_name, reviewerAvatar: r.reviewer_avatar, listingTitle: r.listing_title
+            }))
+        })
+    } catch (error) {
+        console.error('Public profile error:', error)
+        res.status(500).json({ error: 'Failed to load profile' })
     }
 })
 

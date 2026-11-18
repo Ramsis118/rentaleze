@@ -43,7 +43,24 @@ function upgradeDatabase() {
         ['users', 'is_demo', 'INTEGER DEFAULT 0'],
         ['bookings', 'updated_at', 'TEXT'],
         ['bookings', 'cancelled_by', 'TEXT'],
-        ['bookings', 'owner_note', 'TEXT']
+        ['bookings', 'owner_note', 'TEXT'],
+        // Trust & safety: real ID + phone verification
+        ['users', 'id_status', "TEXT DEFAULT 'none'"],      // none | pending | verified | failed
+        ['users', 'identity_session_id', 'TEXT'],
+        ['users', 'id_verified_at', 'TEXT'],
+        ['users', 'id_last_error', 'TEXT'],
+        ['users', 'phone_verified_at', 'TEXT'],
+        ['users', 'suspended', 'INTEGER DEFAULT 0'],
+        ['users', 'suspended_reason', 'TEXT'],
+        // Reviews tied to a finished rental
+        ['reviews', 'booking_id', 'TEXT'],
+        ['reviews', 'reviewer_role', 'TEXT'],              // renter | owner
+        ['reviews', 'subject_user_id', 'TEXT'],
+        // Rental timeline
+        ['bookings', 'picked_up_at', 'TEXT'],
+        ['bookings', 'returned_at', 'TEXT'],
+        // Admin moderation
+        ['listings', 'moderation_note', 'TEXT']
     ]
 
     for (const [table, name, type] of columns) {
@@ -57,7 +74,92 @@ function upgradeDatabase() {
         CREATE INDEX IF NOT EXISTS idx_listings_owner ON listings(owner_id);
         CREATE INDEX IF NOT EXISTS idx_bookings_listing ON bookings(listing_id);
     `)
+    upgradeTrustTables()
     console.log('✅ Database migrations checked')
+}
+
+// Tables for check-in photos, damage claims and the admin audit log
+function upgradeTrustTables() {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS booking_photos (
+            id TEXT PRIMARY KEY,
+            booking_id TEXT NOT NULL,
+            stage TEXT NOT NULL,              -- pickup | return | claim
+            uploaded_by TEXT NOT NULL,
+            file_name TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (booking_id) REFERENCES bookings(id),
+            FOREIGN KEY (uploaded_by) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_booking_photos_booking ON booking_photos(booking_id);
+
+        CREATE TABLE IF NOT EXISTS claims (
+            id TEXT PRIMARY KEY,
+            booking_id TEXT NOT NULL,
+            filed_by TEXT NOT NULL,
+            against_user TEXT NOT NULL,
+            filer_role TEXT NOT NULL,         -- owner | renter
+            type TEXT NOT NULL,               -- damage | late_return | missing_item | not_as_described | other
+            description TEXT NOT NULL,
+            amount_requested REAL DEFAULT 0,
+            amount_approved REAL,
+            status TEXT DEFAULT 'open',       -- open | under_review | resolved | rejected | withdrawn
+            resolution_note TEXT,
+            resolved_by TEXT,
+            resolved_at TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (booking_id) REFERENCES bookings(id),
+            FOREIGN KEY (filed_by) REFERENCES users(id),
+            FOREIGN KEY (against_user) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_claims_booking ON claims(booking_id);
+        CREATE INDEX IF NOT EXISTS idx_claims_status ON claims(status);
+
+        CREATE TABLE IF NOT EXISTS claim_events (
+            id TEXT PRIMARY KEY,
+            claim_id TEXT NOT NULL,
+            author_id TEXT,
+            author_role TEXT NOT NULL,        -- owner | renter | admin | system
+            kind TEXT NOT NULL,               -- comment | status
+            body TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (claim_id) REFERENCES claims(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_claim_events_claim ON claim_events(claim_id);
+
+        CREATE TABLE IF NOT EXISTS admin_actions (
+            id TEXT PRIMARY KEY,
+            admin_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            target_type TEXT NOT NULL,
+            target_id TEXT NOT NULL,
+            detail TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_booking_reviewer ON reviews(booking_id, user_id) WHERE booking_id IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_reviews_subject ON reviews(subject_user_id);
+    `)
+
+    // The old demo flow set is_verified = 2 after a fake phone code, without checking any ID.
+    // Those accounts are not ID-verified, so reset them; their phone check stays.
+    db.prepare(`UPDATE users SET is_verified = 0 WHERE is_verified = 2`).run()
+    // Demo owners count as verified
+    db.prepare(`UPDATE users SET id_status = 'verified' WHERE is_demo = 1 AND is_verified = 1 AND COALESCE(id_status, 'none') = 'none'`).run()
+
+    syncAdmins()
+}
+
+// Emails listed in ADMIN_EMAILS (comma separated) get the admin role. Nobody can sign up as admin.
+export const adminEmails = () => (process.env.ADMIN_EMAILS || '')
+    .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+
+export function syncAdmins() {
+    const emails = adminEmails()
+    if (!emails.length) return
+    const stmt = db.prepare(`UPDATE users SET role = 'admin' WHERE lower(email) = ? AND role != 'admin'`)
+    for (const e of emails) stmt.run(e)
 }
 
 // Seed demo listings (development only)

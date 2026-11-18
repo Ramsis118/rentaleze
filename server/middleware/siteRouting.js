@@ -73,7 +73,8 @@ export function siteRouting() {
         }
 
         // Everything else (beta): password gate, if a password is configured
-        if (!BETA_PASSWORD || req.path === '/api/health' || req.path === '/beta-login') return next()
+        // Stripe webhooks can't type a password; they're protected by Stripe's signature instead
+        if (!BETA_PASSWORD || req.path === '/api/health' || req.path === '/beta-login' || req.path.startsWith('/api/webhooks/')) return next()
         if (hasBetaAccess(req)) return next()
 
         res.set('X-Robots-Tag', 'noindex')
