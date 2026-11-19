@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import Logo from './Logo'
 
 const LINKS = {
   Renters: [
@@ -28,9 +29,9 @@ const LINKS = {
 
 export default function Footer() {
   return (
-    <footer className="bg-rl-dark text-rl-gray-2">
+    <footer className="bg-rl-midnight text-rl-gray-2">
       {/* CTA Banner */}
-      <div className="bg-rl-blue">
+      <div className="bg-gradient-to-r from-rl-blue-500 via-rl-blue to-rl-blue-500 border-y border-rl-electric/40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h3 className="text-white text-xl font-bold mb-1">Have something worth renting?</h3>
@@ -47,13 +48,8 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-rl-blue rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">R</span>
-              </div>
-              <span className="font-bold text-white text-base">
-                Rental<span className="text-rl-blue-300">eze</span>
-              </span>
+            <div className="flex items-center mb-4">
+              <Logo variant="dark" className="h-8 w-auto" />
             </div>
             <p className="text-sm leading-relaxed text-rl-gray-2 mb-4">
               The trusted marketplace to rent anything or earn from everything you own.

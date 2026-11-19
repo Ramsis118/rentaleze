@@ -1,0 +1,233 @@
+/* =========================================================================
+   RENTALEZE - Brand Theme v1.0  (Nov 2026)
+   Electric blue + chrome silver. Sleek, bold, high-contrast.
+   Imported from src/index.css. Fonts are loaded in index.html.
+   Fonts: Montserrat (display) + Inter (UI/body) from Google Fonts.
+   ========================================================================= */
+
+:root {
+  /* ---- Core palette ---- */
+  --rz-volt:        #1F5BFF;  /* Volt Blue - primary */
+  --rz-volt-600:    #1546D9;  /* hover / pressed */
+  --rz-volt-700:    #0F35A8;
+  --rz-electric:    #00C8FF;  /* Electric Cyan - highlight, glow */
+  --rz-volt-50:     #EEF3FF;
+  --rz-volt-100:    #DCE6FF;
+
+  --rz-chrome:      #C7CCD6;  /* Chrome Silver - secondary */
+  --rz-platinum:    #E9ECF2;
+  --rz-mist:        #F5F7FA;
+  --rz-steel:       #8A93A6;
+  --rz-gunmetal:    #4A5368;
+
+  --rz-midnight:    #070D24;  /* darkest surface */
+  --rz-navy:        #0B1430;  /* ink / dark surface */
+  --rz-navy-800:    #121C44;
+  --rz-navy-700:    #1C2757;
+
+  /* ---- Status ---- */
+  --rz-success: #12B76A;
+  --rz-warning: #F5A524;
+  --rz-danger:  #F04438;
+  --rz-info:    var(--rz-electric);
+
+  /* ---- Gradients (signature) ----
+     grad-volt (cyan to blue) is for shapes, rules and large display text only;
+     anything carrying white text uses grad-volt-solid (stays at 4.5:1+). */
+  --rz-grad-volt:   linear-gradient(135deg, var(--rz-electric) 0%, var(--rz-volt) 100%);
+  --rz-grad-volt-solid: linear-gradient(135deg, #2F6BFF 0%, var(--rz-volt) 55%, var(--rz-volt-600) 100%); /* safe under white text */
+  --rz-grad-chrome: linear-gradient(180deg, #FFFFFF 0%, #D3D8E1 45%, #AEB6C4 55%, #E4E8EE 100%);
+  --rz-grad-night:  radial-gradient(1200px 600px at 80% -10%, rgba(31,91,255,.35), transparent 60%),
+                    radial-gradient(800px 400px at 0% 0%, rgba(0,200,255,.18), transparent 60%),
+                    var(--rz-midnight);
+
+  /* ---- Semantic tokens (light theme default) ---- */
+  --rz-bg:          #FFFFFF;
+  --rz-surface:     var(--rz-mist);
+  --rz-surface-2:   #FFFFFF;
+  --rz-border:      #DDE1E9;
+  --rz-text:        var(--rz-navy);
+  --rz-text-muted:  #5B6478;
+  --rz-primary:     var(--rz-volt);
+  --rz-primary-hover: var(--rz-volt-600);
+  --rz-on-primary:  #FFFFFF;
+  --rz-link:        var(--rz-volt);
+  --rz-focus:       0 0 0 3px rgba(31, 91, 255, .35);
+
+  /* ---- Type ---- */
+  --rz-font-display: "Montserrat", "Inter", system-ui, sans-serif;
+  --rz-font-body:    "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --rz-fs-xs: .75rem;  --rz-fs-sm: .875rem; --rz-fs-md: 1rem;
+  --rz-fs-lg: 1.125rem; --rz-fs-xl: 1.375rem; --rz-fs-2xl: 1.75rem;
+  --rz-fs-3xl: 2.25rem; --rz-fs-4xl: 3rem;  --rz-fs-5xl: 4rem;
+
+  /* ---- Shape & space ---- */
+  --rz-radius-sm: 8px; --rz-radius: 12px; --rz-radius-lg: 20px; --rz-radius-pill: 999px;
+  --rz-space-1: 4px; --rz-space-2: 8px; --rz-space-3: 12px; --rz-space-4: 16px;
+  --rz-space-5: 24px; --rz-space-6: 32px; --rz-space-7: 48px; --rz-space-8: 64px;
+
+  /* ---- Elevation ---- */
+  --rz-shadow-sm: 0 1px 2px rgba(11,20,48,.06), 0 1px 3px rgba(11,20,48,.08);
+  --rz-shadow:    0 6px 20px -6px rgba(11,20,48,.18);
+  --rz-shadow-lg: 0 24px 48px -12px rgba(11,20,48,.28);
+  --rz-glow:      0 0 0 1px rgba(0,200,255,.35), 0 8px 30px -6px rgba(31,91,255,.55);
+  --rz-ease: cubic-bezier(.2,.8,.2,1);
+}
+
+/* Dark theme: add data-theme="dark" to <html> (or .rz-dark to any section) */
+[data-theme="dark"], .rz-dark {
+  --rz-bg:         var(--rz-midnight);
+  --rz-surface:    var(--rz-navy);
+  --rz-surface-2:  var(--rz-navy-800);
+  --rz-border:     rgba(199, 204, 214, .14);
+  --rz-text:       #F2F4F8;
+  --rz-text-muted: #A3ABBD;
+  --rz-primary-hover: #3A70FF;
+  --rz-link:        var(--rz-electric);  /* volt is only 3.7:1 on midnight */
+  --rz-focus:      0 0 0 3px rgba(0, 200, 255, .45);
+  --rz-shadow:     0 10px 30px -10px rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+
+/* Page-wide element rules live in src/index.css (Tailwind base layer). */
+
+/* Eyebrow / overline */
+.rz-eyebrow {
+  font-family: var(--rz-font-display);
+  font-size: var(--rz-fs-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .18em;
+  color: var(--rz-primary);
+}
+.rz-dark .rz-eyebrow, [data-theme="dark"] .rz-eyebrow { color: var(--rz-electric); }
+
+/* Signature text effects */
+.rz-text-volt   { background: var(--rz-grad-volt);   -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rz-text-chrome { background: var(--rz-grad-chrome); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rz-muted { color: var(--rz-text-muted); }
+
+/* ---------------- Buttons ---------------- */
+.rz-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5em;
+  height: 44px; padding: 0 22px;
+  font-family: var(--rz-font-body); font-size: var(--rz-fs-sm); font-weight: 700; letter-spacing: .01em;
+  border-radius: var(--rz-radius); border: 1px solid transparent;
+  cursor: pointer; white-space: nowrap; text-decoration: none;
+  transition: transform .15s var(--rz-ease), box-shadow .2s var(--rz-ease), background .2s var(--rz-ease), color .2s, border-color .2s;
+}
+.rz-btn:hover { text-decoration: none; }
+.rz-btn:active { transform: translateY(1px); }
+.rz-btn:disabled, .rz-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.rz-btn-primary { background: var(--rz-volt); color: #fff; box-shadow: 0 6px 18px -6px rgba(31,91,255,.6); }
+.rz-btn-primary:hover { background: var(--rz-primary-hover); color: #fff; box-shadow: var(--rz-glow); }
+
+.rz-btn-volt { background: var(--rz-grad-volt-solid); color: #fff; box-shadow: inset 0 1px 0 rgba(0,200,255,.7), 0 0 0 1px rgba(0,200,255,.45), 0 8px 24px -8px rgba(31,91,255,.7); }
+.rz-btn-volt:hover { color: #fff; box-shadow: var(--rz-glow); filter: saturate(1.15); }
+
+.rz-btn-chrome { background: var(--rz-grad-chrome); color: var(--rz-navy); border-color: #B9C0CC; }
+.rz-btn-chrome:hover { color: var(--rz-navy); box-shadow: var(--rz-shadow); }
+
+.rz-btn-outline { background: transparent; color: var(--rz-text); border-color: var(--rz-chrome); }
+.rz-btn-outline:hover { border-color: var(--rz-volt); color: var(--rz-primary); }
+
+.rz-btn-ghost { background: transparent; color: var(--rz-link); }
+.rz-btn-ghost:hover { background: rgba(31,91,255,.08); }
+
+.rz-btn-danger { background: var(--rz-danger); color: #fff; }
+
+.rz-btn-sm { height: 34px; padding: 0 14px; font-size: var(--rz-fs-xs); border-radius: var(--rz-radius-sm); }
+.rz-btn-lg { height: 54px; padding: 0 30px; font-size: var(--rz-fs-md); }
+.rz-btn-block { width: 100%; }
+
+/* ---------------- Forms ---------------- */
+.rz-label { display: block; font-size: var(--rz-fs-sm); font-weight: 600; margin-bottom: 6px; color: var(--rz-text); }
+.rz-input, .rz-select, .rz-textarea {
+  width: 100%; box-sizing: border-box;
+  height: 46px; padding: 0 14px;
+  font: inherit; font-size: var(--rz-fs-md); color: var(--rz-text);
+  background: var(--rz-surface-2);
+  border: 1px solid var(--rz-border); border-radius: var(--rz-radius);
+  transition: border-color .15s, box-shadow .15s;
+}
+.rz-textarea { height: auto; min-height: 110px; padding: 12px 14px; resize: vertical; }
+.rz-input::placeholder, .rz-textarea::placeholder { color: var(--rz-steel); }
+.rz-input:hover, .rz-select:hover, .rz-textarea:hover { border-color: var(--rz-chrome); }
+.rz-input:focus, .rz-select:focus, .rz-textarea:focus { outline: none; border-color: var(--rz-volt); box-shadow: var(--rz-focus); }
+.rz-input[aria-invalid="true"] { border-color: var(--rz-danger); }
+.rz-help { font-size: var(--rz-fs-xs); color: var(--rz-text-muted); margin-top: 6px; }
+.rz-error { font-size: var(--rz-fs-xs); color: var(--rz-danger); margin-top: 6px; font-weight: 600; }
+
+/* ---------------- Cards & surfaces ---------------- */
+.rz-card {
+  background: var(--rz-surface-2);
+  border: 1px solid var(--rz-border);
+  border-radius: var(--rz-radius-lg);
+  box-shadow: var(--rz-shadow-sm);
+  padding: var(--rz-space-5);
+  transition: transform .2s var(--rz-ease), box-shadow .2s var(--rz-ease), border-color .2s;
+}
+.rz-card-hover:hover { transform: translateY(-3px); box-shadow: var(--rz-shadow); border-color: rgba(31,91,255,.35); }
+
+/* Listing card (rental item) */
+.rz-listing { padding: 0; overflow: hidden; }
+.rz-listing__media { aspect-ratio: 4/3; background: var(--rz-platinum); object-fit: cover; width: 100%; display: block; }
+.rz-listing__body { padding: var(--rz-space-4); }
+.rz-listing__title { font-weight: 700; font-size: var(--rz-fs-md); margin: 0 0 4px; }
+.rz-price { font-family: var(--rz-font-display); font-weight: 800; font-size: var(--rz-fs-lg); color: var(--rz-text); }
+.rz-price small { font-family: var(--rz-font-body); font-weight: 500; font-size: var(--rz-fs-sm); color: var(--rz-text-muted); }
+
+/* Chrome panel - brushed-silver surface for highlights */
+.rz-panel-chrome {
+  background: var(--rz-grad-chrome); color: var(--rz-navy);
+  border-radius: var(--rz-radius-lg); border: 1px solid #B9C0CC;
+}
+/* Night hero - dark gradient with blue glow */
+.rz-hero {
+  background: var(--rz-grad-night); color: #F2F4F8;
+  padding: clamp(48px, 9vw, 120px) var(--rz-space-5);
+}
+.rz-hero h1, .rz-hero h2 { color: #fff; }
+
+/* ---------------- Badges, chips ---------------- */
+.rz-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 10px;
+  font-size: var(--rz-fs-xs); font-weight: 700; letter-spacing: .02em;
+  border-radius: var(--rz-radius-pill);
+  background: var(--rz-volt-50); color: var(--rz-volt-700);
+}
+.rz-badge-verified { background: var(--rz-grad-volt-solid); color: #fff; box-shadow: inset 0 0 0 1px rgba(0,200,255,.6); }
+.rz-badge-silver   { background: var(--rz-platinum); color: var(--rz-gunmetal); border: 1px solid var(--rz-chrome); }
+.rz-badge-success  { background: #E7F8EF; color: #067647; }
+.rz-badge-warning  { background: #FEF4E2; color: #93590B; }
+.rz-badge-danger   { background: #FEECEB; color: #B42318; }
+.rz-dark .rz-badge, [data-theme="dark"] .rz-badge { background: rgba(31,91,255,.18); color: #9DB8FF; }
+.rz-dark .rz-badge-verified, [data-theme="dark"] .rz-badge-verified { background: var(--rz-grad-volt-solid); color: #fff; box-shadow: inset 0 0 0 1px rgba(0,200,255,.6); }
+
+/* ---------------- Navigation ---------------- */
+.rz-nav {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--rz-space-4);
+  height: 68px; padding: 0 var(--rz-space-5);
+  background: rgba(255,255,255,.82);
+  backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--rz-border);
+}
+.rz-dark .rz-nav, [data-theme="dark"] .rz-nav { background: rgba(7,13,36,.78); }
+.rz-nav__logo img, .rz-nav__logo svg { height: 32px; width: auto; display: block; }
+.rz-nav__link { color: var(--rz-text-muted); font-weight: 600; font-size: var(--rz-fs-sm); }
+.rz-nav__link:hover, .rz-nav__link[aria-current="page"] { color: var(--rz-text); text-decoration: none; }
+.rz-nav__link[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--rz-volt); }
+
+/* ---------------- Misc ---------------- */
+.rz-divider { height: 1px; border: 0; background: var(--rz-border); margin: var(--rz-space-5) 0; }
+.rz-divider-volt { height: 3px; width: 56px; border: 0; border-radius: 3px; background: var(--rz-grad-volt); margin: 0 0 var(--rz-space-4); }
+.rz-container { max-width: 1200px; margin: 0 auto; padding: 0 var(--rz-space-5); }
+.rz-table { width: 100%; border-collapse: collapse; font-size: var(--rz-fs-sm); }
+.rz-table th { text-align: left; font-weight: 700; color: var(--rz-text-muted); text-transform: uppercase; font-size: var(--rz-fs-xs); letter-spacing: .08em; padding: 10px 12px; border-bottom: 1px solid var(--rz-border); }
+.rz-table td { padding: 12px; border-bottom: 1px solid var(--rz-border); }
+.rz-table tr:hover td { background: rgba(31,91,255,.04); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

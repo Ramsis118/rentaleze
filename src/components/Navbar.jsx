@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Logo from './Logo'
 
 const SearchIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,13 +54,8 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16 gap-4">
 
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 bg-rl-blue rounded-lg flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-sm tracking-tight">R</span>
-            </div>
-            <span className="font-bold text-rl-dark text-lg tracking-tight">
-              Rental<span className="text-rl-blue">eze</span>
-            </span>
+          <Link to="/" className="flex items-center shrink-0" aria-label="Rentaleze home">
+            <Logo variant="light" className="h-8 w-auto" />
           </Link>
 
           {/* Center search bar (desktop) */}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Logo from '../components/Logo'
 
 const EyeIcon = ({ visible }) => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,11 +84,8 @@ export default function SignupPage() {
         <div className="min-h-screen bg-rl-off-white py-12 px-4">
             <div className="max-w-md mx-auto">
                 {/* Logo */}
-                <Link to="/" className="flex items-center justify-center gap-2 mb-8">
-                    <div className="w-10 h-10 bg-rl-blue rounded-xl flex items-center justify-center">
-                        <span className="text-white font-bold text-xl">R</span>
-                    </div>
-                    <span className="font-bold text-rl-dark text-2xl">Rental<span className="text-rl-blue">eze</span></span>
+                <Link to="/" className="flex items-center justify-center mb-8" aria-label="Rentaleze home">
+                    <Logo variant="light" className="h-10 w-auto" />
                 </Link>
 
                 {/* Card */}

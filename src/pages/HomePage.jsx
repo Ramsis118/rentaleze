@@ -152,7 +152,7 @@ export default function HomePage() {
                       className="flex-1 rounded-t-sm"
                       style={{
                         height: `${h}%`,
-                        background: i === 11 ? '#6BB8D4' : '#D6EEF7'
+                        background: i === 11 ? '#1F5BFF' : '#DCE6FF'
                       }}
                     />
                   ))}

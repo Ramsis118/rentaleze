@@ -18,7 +18,7 @@ export default function CartDrawer() {
           <p className="text-gray-500">Your cart is currently empty.</p>
         </div>
         <div className="p-4 border-t">
-          <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold cursor-not-allowed opacity-50">
+          <button className="w-full bg-rl-blue text-white py-3 rounded-lg font-semibold cursor-not-allowed opacity-50">
             Proceed to Checkout
           </button>
         </div>

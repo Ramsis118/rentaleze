@@ -7,23 +7,29 @@
   <meta name="description" content="Rentaleze is a marketplace for renting everyday things from people near you. Join the waitlist to be first in when we launch." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet" />
+  <meta name="theme-color" content="#070D24" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect x='2' y='2' width='116' height='116' rx='30' fill='%23070D24'/%3E%3Cpath d='M33 26H64a22 22 0 0 1 0 44H49V94H33Z M49 41V55H63a7 7 0 0 0 0-14Z' fill='%23D3D8E1' fill-rule='evenodd'/%3E%3Cpath d='M60 70H77L93 94H76Z' fill='%231F5BFF'/%3E%3C/svg%3E" />
   <style>
-    :root { --blue:#6BB8D4; --blue-50:#F0F8FC; --blue-100:#D6EEF7; --blue-600:#3886A0; --dark:#1E2B37; --dark-3:#435363; --gray:#6B7A8A; --gray-3:#C8D4DC; --off:#F7FBFD; }
+    /* Rentaleze brand v1.0 - electric blue + chrome silver */
+    :root { --blue:#1F5BFF; --blue-50:#EEF3FF; --blue-100:#DCE6FF; --blue-600:#0F35A8; --electric:#00C8FF; --chrome:#C7CCD6; --midnight:#070D24; --dark:#0B1430; --dark-3:#2B3550; --gray:#5B6478; --gray-3:#C7CCD6; --off:#F5F7FA; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; color: var(--dark-3); background: var(--off); }
-    .hero { background: linear-gradient(160deg, #1E2B37 0%, #2D3D4F 60%, #3886A0 140%); color:#fff; padding: 28px 20px 72px; }
-    .wrap { max-width: 1040px; margin: 0 auto; }
-    .brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:20px; }
-    .mark { width:34px; height:34px; border-radius:10px; background:var(--blue); display:flex; align-items:center; justify-content:center; font-weight:800; }
-    .brand span { color: var(--blue); }
+    .hero { position:relative; overflow:hidden; color:#fff; padding: 28px 20px 72px;
+      background: radial-gradient(900px 500px at 85% -10%, rgba(31,91,255,.45), transparent 60%),
+                  radial-gradient(600px 360px at 0% 0%, rgba(0,200,255,.18), transparent 60%), var(--midnight); }
+    .hero::before { content:""; position:absolute; top:0; left:0; right:0; height:1px; background: linear-gradient(90deg, transparent, rgba(0,200,255,.7), transparent); }
+    .wrap { position:relative; max-width: 1040px; margin: 0 auto; }
+    .brand { display:flex; align-items:center; }
+    .logo { height: 36px; width: auto; display:block; }
     .grid { display:grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items:center; margin-top: 56px; }
-    .pill { display:inline-block; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color: var(--blue); background: rgba(107,184,212,.12); border:1px solid rgba(107,184,212,.35); padding:6px 12px; border-radius:999px; }
-    h1 { font-size: 52px; line-height:1.05; margin: 18px 0 16px; font-weight:800; letter-spacing:-.02em; }
-    h1 em { font-style:normal; color: var(--blue); }
-    .lead { font-size:18px; line-height:1.6; color:#C9D6E0; margin:0; max-width: 520px; }
-    .card { background:#fff; color: var(--dark-3); border-radius: 20px; padding: 28px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
-    .card h2 { margin:0 0 6px; color: var(--dark); font-size:22px; }
+    .pill { display:inline-block; font-family: Montserrat, Inter, sans-serif; font-size:12px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color: var(--electric); background: rgba(31,91,255,.15); border:1px solid rgba(0,200,255,.4); padding:6px 12px; border-radius:999px; }
+    h1 { font-family: Montserrat, Inter, sans-serif; font-size: 56px; line-height:1.05; margin: 18px 0 16px; font-weight:900; letter-spacing:-.02em;
+      background: linear-gradient(180deg, #FFFFFF 0%, #D3D8E1 45%, #AEB6C4 55%, #E4E8EE 100%); -webkit-background-clip:text; background-clip:text; color: transparent; }
+    h1 em { font-style:normal; background: linear-gradient(135deg, #00C8FF 0%, #1F5BFF 100%); -webkit-background-clip:text; background-clip:text; color: transparent; }
+    .lead { font-size:18px; line-height:1.6; color:#A3ABBD; margin:0; max-width: 520px; }
+    .card { background:#fff; color: var(--dark-3); border-radius: 20px; padding: 28px; box-shadow: 0 0 0 1px rgba(0,200,255,.3), 0 24px 60px -12px rgba(31,91,255,.45); }
+    .card h2 { margin:0 0 6px; color: var(--dark); font-family: Montserrat, Inter, sans-serif; font-weight:800; font-size:22px; }
     .card p.sub { margin:0 0 20px; font-size:14px; color: var(--gray); }
     label { display:block; font-size:13px; font-weight:700; color: var(--dark); margin: 14px 0 6px; }
     input { width:100%; font: inherit; font-size:15px; padding: 12px 14px; border:1px solid var(--gray-3); border-radius: 12px; background:#fff; color: var(--dark); }
@@ -33,16 +39,18 @@
     .roles input { display:none; }
     .roles label:has(input:checked) { border-color: var(--blue); background: var(--blue-50); color: var(--blue-600); }
     .row { display:grid; grid-template-columns: 1fr 2fr; gap: 10px; }
-    button { margin-top: 20px; width:100%; border:0; border-radius: 12px; padding: 14px; font: inherit; font-weight:700; font-size:16px; color:#fff; background: var(--blue); cursor:pointer; }
-    button:hover { background:#4EA3C0; } button:disabled { opacity:.6; cursor: default; }
+    button { margin-top: 20px; width:100%; border:0; border-radius: 12px; padding: 14px; font: inherit; font-weight:700; font-size:16px; color:#fff; cursor:pointer; transition: box-shadow .2s, filter .2s;
+      background: linear-gradient(135deg, #2F6BFF 0%, #1F5BFF 55%, #1546D9 100%);
+      box-shadow: inset 0 1px 0 rgba(0,200,255,.7), 0 0 0 1px rgba(0,200,255,.45), 0 8px 24px -8px rgba(31,91,255,.7); }
+    button:hover { filter: saturate(1.15); box-shadow: 0 0 0 1px rgba(0,200,255,.6), 0 10px 34px -6px rgba(31,91,255,.75); } button:disabled { opacity:.6; cursor: default; }
     .fine { font-size:12px; color: var(--gray); margin: 12px 0 0; text-align:center; }
     .msg { margin-top:14px; font-size:14px; border-radius:12px; padding:12px 14px; display:none; }
     .msg.ok { display:block; background:#ECFDF5; color:#047857; border:1px solid #A7F3D0; }
     .msg.err { display:block; background:#FEF2F2; color:#B91C1C; border:1px solid #FECACA; }
     .hp { position:absolute; left:-9999px; }
     .features { max-width:1040px; margin: -36px auto 0; padding: 0 20px 64px; display:grid; grid-template-columns: repeat(3,1fr); gap:16px; }
-    .feature { background:#fff; border:1px solid #E8F0F5; border-radius:18px; padding:22px; }
-    .feature b { display:block; color: var(--dark); font-size:16px; margin: 8px 0 6px; }
+    .feature { background:#fff; border:1px solid #DDE1E9; border-radius:20px; padding:22px; box-shadow: 0 1px 2px rgba(11,20,48,.06), 0 4px 14px -4px rgba(11,20,48,.10); }
+    .feature b { display:block; color: var(--dark); font-family: Montserrat, Inter, sans-serif; font-weight:800; font-size:16px; margin: 8px 0 6px; }
     .feature p { margin:0; font-size:14px; line-height:1.55; }
     .emoji { font-size:24px; }
     footer { text-align:center; font-size:13px; color: var(--gray); padding: 0 20px 40px; }
@@ -56,7 +64,20 @@
 <body>
   <section class="hero">
     <div class="wrap">
-      <div class="brand"><div class="mark">R</div><div>Rental<span>eze</span></div></div>
+      <div class="brand">
+        <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 583 120" role="img" aria-label="Rentaleze">
+          <defs>
+            <linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#D3D8E1"/><stop offset=".55" stop-color="#AEB6C4"/><stop offset="1" stop-color="#E4E8EE"/></linearGradient>
+            <linearGradient id="v" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00C8FF"/><stop offset="1" stop-color="#1F5BFF"/></linearGradient>
+            <linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#121C44"/><stop offset="1" stop-color="#070D24"/></linearGradient>
+            <linearGradient id="r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00C8FF" stop-opacity=".9"/><stop offset=".5" stop-color="#1F5BFF" stop-opacity=".35"/><stop offset="1" stop-color="#C7CCD6" stop-opacity=".6"/></linearGradient>
+          </defs>
+          <rect x="2" y="2" width="116" height="116" rx="30" fill="url(#b)"/><rect x="3" y="3" width="114" height="114" rx="29" fill="none" stroke="url(#r)" stroke-width="2"/>
+          <path d="M33 26H64a22 22 0 0 1 0 44H49V94H33Z M49 41V55H63a7 7 0 0 0 0-14Z" fill="url(#s)" fill-rule="evenodd"/><path d="M60 70H77L93 94H76Z" fill="url(#v)"/>
+          <path fill="url(#s)" d="M152.5 83V38.2H172.5Q182.3 38.2 187.6 42.6Q192.9 47.1 192.9 54.8Q192.9 59.8 190.5 63.5Q188 67.2 183.6 69.1Q179.1 71.1 172.9 71.1H159.5L165.2 65.8V83ZM180.2 83 169.1 66.7H182.5L193.8 83ZM165.2 67.2 159.5 61.3H172.2Q176.2 61.3 178.1 59.6Q180.1 57.8 180.1 54.8Q180.1 51.7 178.1 49.9Q176.2 48.2 172.2 48.2H159.5L165.2 42.3ZM203.1 83V38.2H238.1V48H215.6V73.2H239V83ZM214.7 65V55.6H235.5V65ZM249.3 83V38.2H259.7L284.4 68H279.4V38.2H291.9V83H281.4L256.8 53.2H261.7V83ZM313.5 83V48.2H299.8V38.2H340V48.2H326.2V83ZM342.5 83 362.3 38.2H374.8L394.6 83H381.4L365.9 44.4H370.9L355.4 83ZM353.3 74.3 356.6 64.9H378.5L381.7 74.3ZM401.4 83V38.2H414.1V73H435.4V83Z"/>
+          <path fill="url(#v)" d="M443.6 83V38.2H478.7V48H456.1V73.2H479.6V83ZM455.3 65V55.6H476.1V65ZM487.6 83V75.1L514 43.8L515.5 48.2H488.2V38.2H526.7V46.1L500.4 77.4L498.8 73H527.7V83ZM536.5 83V38.2H571.6V48H549V73.2H572.4V83ZM548.1 65V55.6H568.9V65Z"/>
+        </svg>
+      </div>
 
       <div class="grid">
         <div>
