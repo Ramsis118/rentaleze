@@ -18,6 +18,9 @@ import PaymentsPage from './pages/Dashboard/PaymentsPage'
 import VerificationPage from './pages/Dashboard/VerificationPage'
 import MyListingsPage from './pages/Dashboard/MyListingsPage'
 import ListingFormPage from './pages/Dashboard/ListingFormPage'
+import BookingDetailPage from './pages/Dashboard/BookingDetailPage'
+import PublicProfilePage from './pages/PublicProfilePage'
+import AdminPage from './pages/Admin/AdminPage'
 import { useCart } from './context/CartContext'
 import { AuthProvider } from './context/AuthContext'
 
@@ -56,9 +59,12 @@ function AppContent() {
             <Route path="listings/new" element={<ListingFormPage />} />
             <Route path="listings/:id/edit" element={<ListingFormPage />} />
             <Route path="bookings" element={<BookingsPage />} />
+            <Route path="bookings/:id" element={<BookingDetailPage />} />
             <Route path="saved" element={<SavedListingsPage />} />
             <Route path="payments" element={<PaymentsPage />} />
           </Route>
+          <Route path="/u/:id" element={<PublicProfilePage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

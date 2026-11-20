@@ -14,6 +14,9 @@ import usersRoutes from './routers/users.js'
 import paymentsRoutes from './routers/payments.js'
 import messagesRoutes from './routers/messages.js'
 import waitlistRoutes from './routers/waitlist.js'
+import verificationRoutes, { identityWebhook } from './routers/verification.js'
+import bookingTrustRoutes from './routers/bookingTrust.js'
+import adminRoutes from './routers/admin.js'
 import shippingRoutes from './routers/shipping.js'
 import { siteRouting } from './middleware/siteRouting.js'
 import { UPLOADS_DIR } from './utils/paths.js'
@@ -52,20 +55,27 @@ const limiter = rateLimit({
 })
 app.use('/api/', limiter)
 
+// Stripe webhooks need the raw (unparsed) body, so they go before express.json()
+app.post('/api/webhooks/identity', ...identityWebhook)
+
 // Body parsing
-app.use(express.json())
+app.use(express.json({ limit: '1mb' }))
 
 // API Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/listings', listingsRoutes)
+app.use('/api/bookings', bookingTrustRoutes)   // photos, reviews, claims
 app.use('/api/bookings', bookingsRoutes)
 app.use('/api/users', usersRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/messages', messagesRoutes)
 app.use('/api/waitlist', waitlistRoutes)
+app.use('/api/verification', verificationRoutes)
+app.use('/api/admin', adminRoutes)
 app.use('/api/shipping', shippingRoutes)
 
-// Serve avatars and listing photos publicly (ID photos are never served)
+// Serve avatars and listing photos publicly. Rental check-in photos are private
+// (signed links via /api/bookings/:id/photos/...), and ID photos are never stored.
 app.use('/uploads/avatars', express.static(join(UPLOADS_DIR, 'avatars')))
 app.use('/uploads/listings', express.static(join(UPLOADS_DIR, 'listings')))
 
@@ -100,4 +110,4 @@ seedDatabase()
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`)
     console.log(`📡 API: http://localhost:${PORT}/api`)
-})
+})

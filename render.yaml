@@ -47,3 +47,23 @@ services:
       # Add ?token=<this value> to the webhook URL you register in ShipStation
       - key: SHIPSTATION_WEBHOOK_TOKEN
         generateValue: true
+      # ── Trust & safety (see docs/TRUST_AND_ADMIN.md) ──
+      # Comma-separated emails that get the admin panel at /admin
+      - key: ADMIN_EMAILS
+        sync: false
+      # Stripe secret key (also used for Identity ID checks)
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      # Signing secret of the webhook pointing at /api/webhooks/identity
+      - key: STRIPE_IDENTITY_WEBHOOK_SECRET
+        sync: false
+      # Twilio Verify, for text-message codes
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_VERIFY_SERVICE_SID
+        sync: false
+      # Signs the private links to rental condition photos
+      - key: FILE_URL_SECRET
+        generateValue: true

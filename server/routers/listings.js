@@ -76,6 +76,7 @@ export function toListing(row) {
         instantBook: !!row.instant_book,
         condition: row.item_condition || null,
         status: row.status,
+        moderationNote: row.moderation_note || null,
         isDemo,
         createdAt: row.created_at
     }
@@ -85,7 +86,7 @@ function withDetails(listing, row) {
     const d = db.prepare('SELECT * FROM listing_details WHERE listing_id = ?').get(listing.id) || {}
     const reviews = db.prepare(`
         SELECT user_name AS name, user_avatar AS avatar, rating, text, date, created_at
-        FROM reviews WHERE listing_id = ? ORDER BY created_at DESC
+        FROM reviews WHERE listing_id = ? AND COALESCE(reviewer_role, 'renter') = 'renter' ORDER BY created_at DESC
     `).all(listing.id)
     const images = parseJSON(d.images, [])
     return {
@@ -338,6 +339,10 @@ router.put('/:id', authenticate, (req, res) => {
         const existing = db.prepare('SELECT * FROM listings WHERE id = ?').get(req.params.id)
         if (!existing || existing.status === 'deleted') return res.status(404).json({ error: 'Listing not found' })
         if (existing.owner_id !== req.user.id) return res.status(403).json({ error: 'Not authorized' })
+        // Removed by Rentaleze Support: the owner can't edit or re-publish it
+        if (existing.status === 'removed') {
+            return res.status(403).json({ error: `This listing was removed by Rentaleze Support${existing.moderation_note ? `: ${existing.moderation_note}` : '.'}` })
+        }
 
         const { errors, data } = validateListing(req.body, { partial: true })
         const details = db.prepare('SELECT * FROM listing_details WHERE listing_id = ?').get(existing.id) || {}

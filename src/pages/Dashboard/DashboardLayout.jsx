@@ -55,7 +55,7 @@ export default function DashboardLayout() {
                         {!isVerified && (
                             <div className="mb-4 bg-orange-50 border border-orange-200 rounded-xl p-3">
                                 <p className="text-xs text-orange-700 font-bold mb-2">Action Required</p>
-                                <p className="text-xs text-orange-600 mb-3">You must complete ID Verification before renting.</p>
+                                <p className="text-xs text-orange-600 mb-3">Verify your ID and phone before renting or listing.</p>
                                 <NavLink to="/dashboard/verification" className="block text-center text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg py-2 transition-colors">
                                     Verify Now
                                 </NavLink>
@@ -72,7 +72,7 @@ export default function DashboardLayout() {
                             )}
                             <div>
                                 <h3 className="font-extrabold text-rl-dark">{user.first_name} {user.last_name}</h3>
-                                <p className="text-xs text-rl-gray">Member since 2026</p>
+                                <p className="text-xs text-rl-gray">{isVerified ? '✓ Verified member' : `Member since ${user.createdAt ? new Date(user.createdAt).getFullYear() : new Date().getFullYear()}`}</p>
                             </div>
                         </div>
 
@@ -85,7 +85,7 @@ export default function DashboardLayout() {
                             />
                             <NavItem 
                                 to="/dashboard/verification" 
-                                label="ID Verification" 
+                                label="Verification" 
                                 icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
                             />
                             <NavItem 
@@ -113,6 +113,13 @@ export default function DashboardLayout() {
                                 label="Payment Methods" 
                                 icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>}
                             />
+                            {user.isAdmin && (
+                                <NavItem
+                                    to="/admin"
+                                    label="Admin"
+                                    icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
+                                />
+                            )}
                         </nav>
 
                         <div className="mt-8 pt-4 border-t border-rl-gray-3">

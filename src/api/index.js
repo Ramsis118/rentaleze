@@ -210,6 +210,35 @@ class ApiClient {
     async createShippingLabels(bookingId) {
         return this.request(`/shipping/bookings/${bookingId}/labels`, { method: 'POST' })
     }
+
+    // Verification (Stripe Identity + text message code)
+    getVerificationStatus() { return this.request('/verification/status') }
+    startIdentityCheck() { return this.request('/verification/identity/start', { method: 'POST' }) }
+    devCompleteIdentity() { return this.request('/verification/identity/dev-complete', { method: 'POST' }) }
+    sendPhoneCode(phone) { return this.request('/verification/phone/send', { method: 'POST', body: JSON.stringify({ phone }) }) }
+    checkPhoneCode(code) { return this.request('/verification/phone/check', { method: 'POST', body: JSON.stringify({ code }) }) }
+
+    // Booking trust: photos, reviews, claims
+    getBookingTrust(id) { return this.request(`/bookings/${id}/trust`) }
+    uploadBookingPhotos(id, stage, files) {
+        const form = new FormData()
+        for (const f of files) form.append('photos', f)
+        return this.request(`/bookings/${id}/photos?stage=${stage}`, { method: 'POST', body: form })
+    }
+    deleteBookingPhoto(id, photoId) { return this.request(`/bookings/${id}/photos/${photoId}`, { method: 'DELETE' }) }
+    reviewBooking(id, rating, text) { return this.request(`/bookings/${id}/review`, { method: 'POST', body: JSON.stringify({ rating, text }) }) }
+    fileClaim(id, data) { return this.request(`/bookings/${id}/claims`, { method: 'POST', body: JSON.stringify(data) }) }
+    commentOnClaim(id, claimId, body) { return this.request(`/bookings/${id}/claims/${claimId}/comment`, { method: 'POST', body: JSON.stringify({ body }) }) }
+    withdrawClaim(id, claimId) { return this.request(`/bookings/${id}/claims/${claimId}/withdraw`, { method: 'POST' }) }
+
+    // Public profiles
+    getPublicProfile(userId) { return this.request(`/users/${userId}/public`) }
+
+    // Admin
+    admin(path, options = {}) {
+        const { method = 'GET', body } = options
+        return this.request(`/admin${path}`, { method, ...(body ? { body: JSON.stringify(body) } : {}) })
+    }
 }
 
 export const api = new ApiClient()

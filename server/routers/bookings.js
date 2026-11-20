@@ -92,7 +92,14 @@ function toBooking(row, viewerId) {
         ownerName: isDemo ? row.owner_name : `${row.owner_first_name} ${row.owner_last_name?.[0] || ''}.`,
         renterName: `${row.renter_first_name} ${row.renter_last_name?.[0] || ''}.`,
         renterAvatar: row.renter_avatar || null,
-        actions: allowedActions(row, viewerId)
+        renterId: row.user_id,
+        ownerId: row.owner_id,
+        actions: allowedActions(row, viewerId),
+        pickedUpAt: row.picked_up_at || null,
+        returnedAt: row.returned_at || null,
+        // Trust: shown as badges on the bookings list
+        openClaims: db.prepare(`SELECT COUNT(*) AS n FROM claims WHERE booking_id = ? AND status IN ('open','under_review')`).get(row.id).n,
+        reviewed: !!db.prepare('SELECT 1 FROM reviews WHERE booking_id = ? AND user_id = ?').get(row.id, viewerId)
     }
 }
 
@@ -260,9 +267,11 @@ router.put('/:id/:action', authenticate, async (req, res) => {
 
         // Guard against two clicks racing: only update if the status is still what we checked
         const result = db.prepare(`
-            UPDATE bookings SET status = ?, cancelled_by = ?, owner_note = COALESCE(?, owner_note), updated_at = CURRENT_TIMESTAMP
+            UPDATE bookings SET status = ?, cancelled_by = ?, owner_note = COALESCE(?, owner_note), updated_at = CURRENT_TIMESTAMP,
+                picked_up_at = CASE WHEN ? = 'active' THEN CURRENT_TIMESTAMP ELSE picked_up_at END,
+                returned_at = CASE WHEN ? = 'completed' THEN CURRENT_TIMESTAMP ELSE returned_at END
             WHERE id = ? AND status = ?
-        `).run(TRANSITIONS[action], cancelledBy, note, row.id, row.status)
+        `).run(TRANSITIONS[action], cancelledBy, note, TRANSITIONS[action], TRANSITIONS[action], row.id, row.status)
         if (result.changes === 0) return res.status(409).json({ error: 'This booking was just updated. Please refresh.' })
 
         // Shipping labels follow the booking: buy on accept, void on cancel/decline

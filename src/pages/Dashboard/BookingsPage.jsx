@@ -174,6 +174,12 @@ function BookingRow({ booking, onChanged }) {
                 </p>
                 <p className="text-sm text-rl-dark-3 mt-2">{statusLine(booking)}</p>
                 {booking.ownerNote && <p className="text-xs text-rl-gray mt-1">Note: “{booking.ownerNote}”</p>}
+                {booking.openClaims > 0 && (
+                    <p className="text-xs font-bold text-amber-700 mt-2">⚠ A problem was reported on this rental</p>
+                )}
+                {booking.status === 'completed' && !booking.reviewed && (
+                    <p className="text-xs font-semibold text-rl-blue-600 mt-2">★ Leave a review</p>
+                )}
 
                 <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
                     <span className="bg-rl-gray-4 px-3 py-1.5 rounded-lg">
@@ -182,13 +188,22 @@ function BookingRow({ booking, onChanged }) {
                     </span>
                     <span className="bg-rl-gray-4 px-3 py-1.5 rounded-lg">
                         <span className="text-rl-gray text-xs">{booking.role === 'owner' ? 'Renter ' : 'Owner '}</span>
-                        <span className="font-bold text-rl-dark">{booking.role === 'owner' ? booking.renterName : booking.ownerName}</span>
+                        {booking.role === 'owner' && booking.renterId ? (
+                            <Link to={`/u/${booking.renterId}`} className="font-bold text-rl-dark hover:text-rl-blue-600">{booking.renterName}</Link>
+                        ) : (
+                            <span className="font-bold text-rl-dark">{booking.role === 'owner' ? booking.renterName : booking.ownerName}</span>
+                        )}
                     </span>
                     {booking.fulfillment === 'shipping' && booking.shippingFee > 0 && (
                         <span className="bg-rl-gray-4 px-3 py-1.5 rounded-lg">
                             <span className="text-rl-gray text-xs">Shipping both ways </span>
                             <span className="font-bold text-rl-dark">{currency(booking.shippingFee)}</span>
                         </span>
+                    )}
+                    {!['requested', 'declined'].includes(booking.status) && (
+                        <Link to={`/dashboard/bookings/${booking.id}`} className="text-sm font-semibold text-rl-blue-600 hover:text-rl-blue-500">
+                            Photos, reviews & problems →
+                        </Link>
                     )}
                 </div>
 

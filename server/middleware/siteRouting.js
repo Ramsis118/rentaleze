@@ -73,8 +73,8 @@ export function siteRouting() {
         }
 
         // Everything else (beta): password gate, if a password is configured
-        // Webhooks come from servers (not browsers) and check their own secret token
-        const isWebhook = req.method === 'POST' && req.path === '/api/shipping/webhook'
+        // Webhooks come from servers (not browsers): Stripe's are signed, ShipStation's carry a secret token
+        const isWebhook = req.method === 'POST' && (req.path.startsWith('/api/webhooks/') || req.path === '/api/shipping/webhook')
         if (!BETA_PASSWORD || req.path === '/api/health' || req.path === '/beta-login' || isWebhook) return next()
         if (hasBetaAccess(req)) return next()
 
