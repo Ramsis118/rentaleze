@@ -73,7 +73,9 @@ export function siteRouting() {
         }
 
         // Everything else (beta): password gate, if a password is configured
-        if (!BETA_PASSWORD || req.path === '/api/health' || req.path === '/beta-login') return next()
+        // Webhooks come from servers (not browsers) and check their own secret token
+        const isWebhook = req.method === 'POST' && req.path === '/api/shipping/webhook'
+        if (!BETA_PASSWORD || req.path === '/api/health' || req.path === '/beta-login' || isWebhook) return next()
         if (hasBetaAccess(req)) return next()
 
         res.set('X-Robots-Tag', 'noindex')
