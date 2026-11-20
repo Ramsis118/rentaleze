@@ -14,6 +14,7 @@ import usersRoutes from './routers/users.js'
 import paymentsRoutes from './routers/payments.js'
 import messagesRoutes from './routers/messages.js'
 import waitlistRoutes from './routers/waitlist.js'
+import shippingRoutes from './routers/shipping.js'
 import { siteRouting } from './middleware/siteRouting.js'
 import { UPLOADS_DIR } from './utils/paths.js'
 
@@ -62,6 +63,7 @@ app.use('/api/users', usersRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/messages', messagesRoutes)
 app.use('/api/waitlist', waitlistRoutes)
+app.use('/api/shipping', shippingRoutes)
 
 // Serve avatars and listing photos publicly (ID photos are never served)
 app.use('/uploads/avatars', express.static(join(UPLOADS_DIR, 'avatars')))

@@ -167,3 +167,26 @@ CREATE TABLE IF NOT EXISTS waitlist (
   source TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Shipping labels bought through ShipStation (one outbound + one return per shipped rental)
+CREATE TABLE IF NOT EXISTS shipments (
+  id TEXT PRIMARY KEY,
+  booking_id TEXT NOT NULL,
+  direction TEXT NOT NULL,          -- 'outbound' (owner → renter) | 'return' (renter → owner)
+  status TEXT NOT NULL,             -- 'created' | 'error' | 'voided'
+  provider TEXT DEFAULT 'shipstation',
+  mode TEXT,                        -- 'live' | 'mock'
+  label_id TEXT,
+  shipment_id TEXT,
+  carrier_code TEXT,
+  service_code TEXT,
+  tracking_number TEXT,
+  tracking_status TEXT,             -- ShipStation status code: AC, IT, DE, EX, UN …
+  tracking_description TEXT,
+  label_url TEXT,
+  cost REAL,
+  error TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (booking_id) REFERENCES bookings(id)
+);

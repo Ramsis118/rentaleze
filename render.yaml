@@ -37,3 +37,13 @@ services:
       # Used to download the waitlist as CSV (header x-admin-token)
       - key: ADMIN_TOKEN
         generateValue: true
+      # ShipStation shipping labels (see docs/SHIPPING.md) — set the key and carrier IDs in the dashboard
+      - key: SHIPSTATION_API_KEY
+        sync: false
+      - key: SHIPSTATION_CARRIER_IDS
+        sync: false
+      - key: SHIPSTATION_SERVICE_CODES
+        value: usps_ground_advantage,usps_priority_mail,ups_ground
+      # Add ?token=<this value> to the webhook URL you register in ShipStation
+      - key: SHIPSTATION_WEBHOOK_TOKEN
+        generateValue: true

@@ -191,12 +191,38 @@ function BookingCard({ listing }) {
   const [bookingError, setBookingError] = useState('')
   const isOwnListing = user && user.id === listing.ownerId
 
+  // Delivery: pickup, or shipped with prepaid send + return labels
+  const [fulfillment, setFulfillment] = useState('pickup')
+  const [address, setAddress] = useState({ line1: '', city: '', state: '', zip: '' })
+  const [quote, setQuote] = useState(null)
+  const [quoting, setQuoting] = useState(false)
+  const shipping = fulfillment === 'shipping'
+  const setAddr = (key) => (e) => {
+    const value = key === 'state' ? e.target.value.toUpperCase() : e.target.value
+    setAddress(a => ({ ...a, [key]: value }))
+  }
+
+  useEffect(() => {
+    if (!shipping || !/^\d{5}$/.test(address.zip)) { setQuote(null); setQuoting(false); return }
+    let cancelled = false
+    setQuoting(true)
+    const t = setTimeout(() => {
+      api.getShippingQuote(listing.id, { zip: address.zip, city: address.city, state: address.state })
+        .then(q => { if (!cancelled) setQuote(q) })
+        .catch(() => { if (!cancelled) setQuote(null) })
+        .finally(() => { if (!cancelled) setQuoting(false) })
+    }, 400)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [shipping, address.zip, address.state, listing.id])
+
   const msPerDay = 86400000
   const days = Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / msPerDay))
   const rentalTotal = days * listing.pricePerDay
-  const serviceFee = Math.round(rentalTotal * 0.12)
-  const total = rentalTotal + serviceFee
+  const serviceFee = Math.round(rentalTotal * 0.12 * 100) / 100
+  const shippingFee = shipping && quote ? quote.fee : 0
+  const total = Math.round((rentalTotal + serviceFee + shippingFee) * 100) / 100
   const instantBook = listing.instantBook
+  const money = (n) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`
 
   const handleBook = async () => {
     setBookingError('')
@@ -208,9 +234,18 @@ function BookingCard({ listing }) {
       setBookingError('End date must be after the start date.')
       return
     }
+    if (shipping && (!address.line1.trim() || !address.city.trim() || !/^[A-Z]{2}$/.test(address.state) || !/^\d{5}$/.test(address.zip))) {
+      setBookingError('Add your full delivery address (street, city, 2-letter state, 5-digit ZIP).')
+      return
+    }
     setSubmitting(true)
     try {
-      const booking = await api.createBooking({ listingId: listing.id, startDate, endDate, fulfillment: 'pickup' })
+      const booking = await api.createBooking({
+        listingId: listing.id, startDate, endDate, fulfillment,
+        ...(shipping ? {
+          shippingAddress: address.line1, shippingCity: address.city, shippingState: address.state, shippingZip: address.zip
+        } : {})
+      })
       setBooked(booking.status)
     } catch (err) {
       setBookingError(err.message)
@@ -230,7 +265,7 @@ function BookingCard({ listing }) {
         <h3 className="text-lg font-extrabold text-rl-dark mb-1">{booked === 'accepted' ? 'Booked!' : 'Request Sent!'}</h3>
         <p className="text-sm text-rl-gray mb-5">
           {booked === 'accepted'
-            ? `You're confirmed for ${days} day${days !== 1 ? 's' : ''}. Pickup details are in your bookings.`
+            ? `You're confirmed for ${days} day${days !== 1 ? 's' : ''}. ${shipping ? 'Tracking and your prepaid return label' : 'Pickup details'} are in your bookings.`
             : `Your request for ${days} day${days !== 1 ? 's' : ''} has been sent to ${listing.ownerName}. You'll see their answer in your bookings.`}
         </p>
         <Link to="/dashboard/bookings" className="btn-outline text-sm w-full justify-center">
@@ -299,19 +334,57 @@ function BookingCard({ listing }) {
           </p>
         </div>
 
+        {/* Delivery */}
+        {listing.shipping && !isOwnListing && (
+          <div>
+            <label className="text-xs font-bold text-rl-dark uppercase tracking-wide block mb-2">Delivery</label>
+            <div className="grid grid-cols-2 gap-2">
+              {[['pickup', 'Local pickup'], ['shipping', 'Ship to me']].map(([key, label]) => (
+                <button key={key} type="button" onClick={() => setFulfillment(key)}
+                  className={`py-2 rounded-xl text-sm font-semibold border transition-colors ${fulfillment === key ? 'border-rl-blue bg-rl-blue-50 text-rl-blue-600' : 'border-rl-gray-3 text-rl-gray hover:text-rl-dark'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {shipping && (
+              <div className="space-y-2 mt-3">
+                <input className="input-field py-2 text-sm w-full" placeholder="Street address" value={address.line1} onChange={setAddr('line1')} maxLength={100} />
+                <div className="grid grid-cols-[1fr_56px_80px] gap-2">
+                  <input className="input-field py-2 text-sm" placeholder="City" value={address.city} onChange={setAddr('city')} maxLength={60} />
+                  <input className="input-field py-2 text-sm" placeholder="GA" value={address.state} onChange={setAddr('state')} maxLength={2} />
+                  <input className="input-field py-2 text-sm" placeholder="ZIP" inputMode="numeric" value={address.zip} onChange={setAddr('zip')} maxLength={5} />
+                </div>
+                <p className="text-xs text-rl-gray-2">Includes a prepaid send label and a prepaid return label.</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Price breakdown */}
         <div className="space-y-2 pt-1">
           <div className="flex justify-between text-sm">
             <span className="text-rl-gray">${listing.pricePerDay} × {days} day{days !== 1 ? 's' : ''}</span>
-            <span className="text-rl-dark font-medium">${rentalTotal}</span>
+            <span className="text-rl-dark font-medium">{money(rentalTotal)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-rl-gray">Service fee</span>
-            <span className="text-rl-dark font-medium">${serviceFee}</span>
+            <span className="text-rl-dark font-medium">{money(serviceFee)}</span>
           </div>
+          {shipping && (
+            <div className="flex justify-between text-sm">
+              <span className="text-rl-gray">
+                Shipping, both ways
+                {quote && !quote.estimated && <span className="block text-[11px] text-rl-gray-2">Standard rate{quote.reason ? ` — ${quote.reason}` : ''}</span>}
+                {quote?.estimated && quote.deliveryDays && <span className="block text-[11px] text-rl-gray-2">Arrives in about {quote.deliveryDays} business day{quote.deliveryDays === 1 ? '' : 's'}</span>}
+              </span>
+              <span className="text-rl-dark font-medium">
+                {quoting ? '…' : quote ? money(quote.fee) : <span className="text-rl-gray-2 text-xs">Enter ZIP</span>}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between font-bold pt-2 border-t border-rl-gray-3">
             <span className="text-rl-dark">Total</span>
-            <span className="text-rl-dark">${total}</span>
+            <span className="text-rl-dark">{money(total)}</span>
           </div>
         </div>
 
@@ -680,6 +753,11 @@ export default function ListingDetailPage() {
                 {listing.shipping && (
                   <span className="inline-flex items-center gap-1.5 bg-purple-50 text-purple-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-purple-200">
                     📦 Ships to You
+                    {listing.package && (
+                      <span className="font-normal">
+                        · {listing.package.lengthIn}×{listing.package.widthIn}×{listing.package.heightIn} in, {listing.package.weightLb} lb packed
+                      </span>
+                    )}
                   </span>
                 )}
               </div>

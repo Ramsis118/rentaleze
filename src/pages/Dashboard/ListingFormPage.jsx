@@ -19,7 +19,15 @@ const EMPTY = {
     includesText: '',
     rulesText: '',
     specsText: '',
+    // Packed size for shipping quotes and labels
+    weightLb: '',
+    lengthIn: '',
+    widthIn: '',
+    heightIn: '',
+    shipFrom: { name: '', phone: '', line1: '', line2: '', city: '', state: '', zip: '' },
 }
+
+const hasAny = (obj) => Object.values(obj).some(v => String(v || '').trim())
 
 // "Key: value" per line  <->  { Key: 'value' }
 const specsToText = (specs = {}) => Object.entries(specs).map(([k, v]) => `${k}: ${v}`).join('\n')
@@ -77,6 +85,11 @@ export default function ListingFormPage() {
                     includesText: (l.includes || []).join('\n'),
                     rulesText: (l.rules || []).join('\n'),
                     specsText: specsToText(l.specs),
+                    weightLb: l.package ? String(l.package.weightLb) : '',
+                    lengthIn: l.package ? String(l.package.lengthIn) : '',
+                    widthIn: l.package ? String(l.package.widthIn) : '',
+                    heightIn: l.package ? String(l.package.heightIn) : '',
+                    shipFrom: { ...EMPTY.shipFrom, ...(l.shipFrom || {}) },
                 })
                 setCurrentStatus(l.status)
             })
@@ -87,6 +100,10 @@ export default function ListingFormPage() {
     const set = (key) => (e) => {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value
         setForm(f => ({ ...f, [key]: value }))
+    }
+    const setShipFrom = (key) => (e) => {
+        const value = key === 'state' ? e.target.value.toUpperCase() : e.target.value
+        setForm(f => ({ ...f, shipFrom: { ...f.shipFrom, [key]: value } }))
     }
 
     const handlePhotos = async (e) => {
@@ -127,6 +144,15 @@ export default function ListingFormPage() {
             setError('Add a pickup location before publishing.')
             return
         }
+        const sizeFields = [form.weightLb, form.lengthIn, form.widthIn, form.heightIn]
+        if (status === 'active' && form.shipping && sizeFields.some(v => !(Number(v) > 0))) {
+            setError('Add the packed size and weight (L × W × H and lb) so renters get an accurate shipping price.')
+            return
+        }
+        if (status === 'active' && form.shipping && !hasAny(form.shipFrom)) {
+            setError('Add a ship-from address so shipping labels can be created.')
+            return
+        }
 
         const payload = {
             title: form.title,
@@ -141,6 +167,10 @@ export default function ListingFormPage() {
             includes: lines(form.includesText),
             rules: lines(form.rulesText),
             specs: textToSpecs(form.specsText),
+            package: sizeFields.some(v => String(v).trim())
+                ? { weightLb: form.weightLb, lengthIn: form.lengthIn, widthIn: form.widthIn, heightIn: form.heightIn }
+                : null,
+            shipFrom: hasAny(form.shipFrom) ? form.shipFrom : null,
             status,
         }
 
@@ -260,6 +290,59 @@ export default function ListingFormPage() {
                         </span>
                     </label>
                 </div>
+
+                {form.shipping && (
+                    <div className="border border-rl-blue-100 bg-rl-blue-50 rounded-xl p-4 space-y-5">
+                        <div>
+                            <p className="text-sm font-bold text-rl-dark">Package size</p>
+                            <p className="text-xs text-rl-gray mt-0.5">
+                                Measure the item packed in its box. Carriers price by weight and size, so this sets the
+                                shipping price renters see. Prepaid send and return labels are created when you confirm a rental.
+                            </p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                                {[['lengthIn', 'Length (in)', '24'], ['widthIn', 'Width (in)', '14'], ['heightIn', 'Height (in)', '12'], ['weightLb', 'Weight (lb)', '18']].map(([key, label, ph]) => (
+                                    <Field key={key} label={label}>
+                                        <input className="input-field" type="number" min={key === 'weightLb' ? '0.1' : '1'}
+                                            max={key === 'weightLb' ? '150' : '108'} step="0.1"
+                                            value={form[key]} onChange={set(key)} placeholder={ph} />
+                                    </Field>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <p className="text-sm font-bold text-rl-dark">Ship-from address</p>
+                            <p className="text-xs text-rl-gray mt-0.5">
+                                Printed on the send label and used as the return address. Only you and the shipping carrier see it.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                                <Field label="Name">
+                                    <input className="input-field" value={form.shipFrom.name} onChange={setShipFrom('name')} maxLength={80} placeholder="Your name or business" />
+                                </Field>
+                                <Field label="Phone">
+                                    <input className="input-field" type="tel" value={form.shipFrom.phone} onChange={setShipFrom('phone')} maxLength={20} placeholder="(404) 555-0100" />
+                                </Field>
+                                <Field label="Street address">
+                                    <input className="input-field" value={form.shipFrom.line1} onChange={setShipFrom('line1')} maxLength={100} placeholder="123 Peachtree St" />
+                                </Field>
+                                <Field label="Apt / suite (optional)">
+                                    <input className="input-field" value={form.shipFrom.line2} onChange={setShipFrom('line2')} maxLength={100} />
+                                </Field>
+                                <Field label="City">
+                                    <input className="input-field" value={form.shipFrom.city} onChange={setShipFrom('city')} maxLength={60} placeholder="Atlanta" />
+                                </Field>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Field label="State">
+                                        <input className="input-field" value={form.shipFrom.state} onChange={setShipFrom('state')} maxLength={2} placeholder="GA" />
+                                    </Field>
+                                    <Field label="ZIP">
+                                        <input className="input-field" inputMode="numeric" value={form.shipFrom.zip} onChange={setShipFrom('zip')} maxLength={5} placeholder="30303" />
+                                    </Field>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <details className="border border-rl-gray-3 rounded-xl p-4" open={Boolean(form.includesText || form.rulesText || form.specsText)}>
                     <summary className="text-sm font-bold text-rl-dark cursor-pointer">More details (optional)</summary>

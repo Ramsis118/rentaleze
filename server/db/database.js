@@ -43,7 +43,16 @@ function upgradeDatabase() {
         ['users', 'is_demo', 'INTEGER DEFAULT 0'],
         ['bookings', 'updated_at', 'TEXT'],
         ['bookings', 'cancelled_by', 'TEXT'],
-        ['bookings', 'owner_note', 'TEXT']
+        ['bookings', 'owner_note', 'TEXT'],
+        // Shipping: packed size of the item (for rate estimates and labels)
+        ['listings', 'ship_weight_oz', 'REAL'],
+        ['listings', 'ship_length_in', 'REAL'],
+        ['listings', 'ship_width_in', 'REAL'],
+        ['listings', 'ship_height_in', 'REAL'],
+        ['listings', 'ship_from', 'TEXT'],          // JSON address, private to the owner
+        ['bookings', 'shipping_name', 'TEXT'],
+        ['bookings', 'shipping_phone', 'TEXT'],
+        ['bookings', 'shipping_estimated', 'INTEGER DEFAULT 0']
     ]
 
     for (const [table, name, type] of columns) {
@@ -56,6 +65,8 @@ function upgradeDatabase() {
         CREATE INDEX IF NOT EXISTS idx_listings_status_category ON listings(status, category);
         CREATE INDEX IF NOT EXISTS idx_listings_owner ON listings(owner_id);
         CREATE INDEX IF NOT EXISTS idx_bookings_listing ON bookings(listing_id);
+        CREATE INDEX IF NOT EXISTS idx_shipments_booking ON shipments(booking_id);
+        CREATE INDEX IF NOT EXISTS idx_shipments_tracking ON shipments(tracking_number);
     `)
     console.log('✅ Database migrations checked')
 }

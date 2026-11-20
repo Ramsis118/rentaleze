@@ -23,8 +23,26 @@ const currency = (n) => new Intl.NumberFormat('en-US', { style: 'currency', curr
 // Dates are calendar days ("2026-12-05"); show them without time-zone shifts
 const day = (s) => new Date(`${s}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
+// Shipped rentals use the same statuses; only the wording changes
+const SHIP_ACTION_LABELS = {
+    pickup: { label: 'Mark delivered', confirm: 'Confirm the renter has received the item?' },
+    return: { label: 'Mark returned', confirm: 'Confirm the item came back and you checked it?' },
+}
+const actionFor = (b, a) => (b.fulfillment === 'shipping' && SHIP_ACTION_LABELS[a] ? { ...ACTIONS[a], ...SHIP_ACTION_LABELS[a] } : ACTIONS[a])
+
 function statusLine(b) {
     const other = b.role === 'owner' ? b.renterName : b.ownerName
+    if (b.fulfillment === 'shipping') {
+        switch (b.status) {
+            case 'accepted': return b.role === 'owner'
+                ? `Confirmed. Print the send label below and ship it so it arrives by ${day(b.startDate)}.`
+                : `Confirmed — ${other} is shipping it to arrive by ${day(b.startDate)}.`
+            case 'active': return b.role === 'owner'
+                ? `With ${other}. They'll ship it back with the prepaid return label by ${day(b.endDate)}.`
+                : `Ship it back with your prepaid return label by ${day(b.endDate)}.`
+            default: break
+        }
+    }
     switch (b.status) {
         case 'requested': return b.role === 'owner' ? `${other} wants to rent this. Accept or decline.` : `Waiting for ${other} to respond.`
         case 'accepted':  return b.role === 'owner' ? `Confirmed. Mark it picked up when ${other} has the item.` : `Confirmed — pick up on ${day(b.startDate)}.`
@@ -34,6 +52,87 @@ function statusLine(b) {
         case 'cancelled': return b.cancelledBy === (b.role === 'owner' ? 'owner' : 'renter') ? 'You cancelled this booking.' : `Cancelled by ${other}.`
         default: return ''
     }
+}
+
+const TRACK_STYLE = {
+    DE: 'text-emerald-700',
+    EX: 'text-red-600',
+    AT: 'text-amber-700',
+}
+
+function ShippingPanel({ booking, onChanged }) {
+    const [busy, setBusy] = useState(false)
+    const [error, setError] = useState('')
+    const shipments = booking.shipments || []
+    const confirmed = ['accepted', 'active'].includes(booking.status)
+    if (!confirmed && shipments.length === 0) return null
+
+    const hasError = shipments.some(s => s.status === 'error')
+    const missing = !shipments.some(s => s.direction === 'outbound' && s.status === 'created')
+        || !shipments.some(s => s.direction === 'return' && s.status === 'created')
+    const canRetry = booking.role === 'owner' && confirmed && (hasError || missing)
+
+    const retry = async () => {
+        setBusy(true)
+        setError('')
+        try {
+            const { shipments: next } = await api.createShippingLabels(booking.id)
+            onChanged({ ...booking, shipments: next })
+        } catch (err) {
+            setError(err.message)
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    const visible = booking.role === 'owner' ? shipments : shipments.filter(s => s.status === 'created')
+
+    return (
+        <div className="mt-3 border border-rl-gray-3 rounded-xl divide-y divide-rl-gray-3 text-sm">
+            {visible.length === 0 && (
+                <p className="px-3 py-2.5 text-rl-gray text-xs">
+                    {booking.role === 'owner' ? 'Shipping labels have not been created yet.' : 'Shipping labels are being prepared.'}
+                </p>
+            )}
+            {visible.map(s => (
+                <div key={`${s.direction}-${s.createdAt}`} className="px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="font-bold text-rl-dark w-16">{s.direction === 'outbound' ? 'Send' : 'Return'}</span>
+                    {s.status === 'error' ? (
+                        <span className="text-red-600 text-xs flex-1">Label not created: {s.error}</span>
+                    ) : (
+                        <>
+                            <span className="text-xs text-rl-gray">
+                                {(s.carrier || '').replace(/_/g, ' ').toUpperCase()}{' '}
+                                {s.trackingUrl
+                                    ? <a href={s.trackingUrl} target="_blank" rel="noreferrer" className="underline text-rl-blue-600">{s.trackingNumber}</a>
+                                    : <span className="font-mono">{s.trackingNumber}</span>}
+                            </span>
+                            <span className={`text-xs font-semibold ${TRACK_STYLE[s.trackingStatus] || 'text-rl-dark-3'}`}>{s.trackingDescription}</span>
+                            {s.mode === 'mock' && <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">TEST</span>}
+                            {s.labelUrl && (
+                                <a href={s.labelUrl} target="_blank" rel="noreferrer" className="ml-auto text-xs font-semibold text-rl-blue-600 hover:underline">
+                                    Print label (PDF)
+                                </a>
+                            )}
+                        </>
+                    )}
+                </div>
+            ))}
+            {canRetry && (
+                <div className="px-3 py-2.5 flex items-center gap-3">
+                    <button disabled={busy} onClick={retry} className="btn-outline text-xs py-1.5 px-3 disabled:opacity-60">
+                        {busy ? 'Creating labels…' : hasError ? 'Try creating labels again' : 'Create labels'}
+                    </button>
+                    {hasError && (
+                        <Link to={`/dashboard/listings/${booking.listingId}/edit`} className="text-xs text-rl-gray hover:text-rl-blue-600">
+                            Check package size & ship-from address
+                        </Link>
+                    )}
+                </div>
+            )}
+            {error && <p className="px-3 py-2 text-xs text-red-600">{error}</p>}
+        </div>
+    )
 }
 
 function BookingRow({ booking, onChanged }) {
@@ -55,7 +154,7 @@ function BookingRow({ booking, onChanged }) {
         }
     }
 
-    const press = (action) => (ACTIONS[action].confirm ? setConfirming(action) : run(action))
+    const press = (action) => (actionFor(booking, action).confirm ? setConfirming(action) : run(action))
 
     return (
         <div className="border border-rl-gray-3 rounded-xl p-4 sm:p-5 bg-white flex flex-col sm:flex-row gap-4 items-start">
@@ -85,12 +184,20 @@ function BookingRow({ booking, onChanged }) {
                         <span className="text-rl-gray text-xs">{booking.role === 'owner' ? 'Renter ' : 'Owner '}</span>
                         <span className="font-bold text-rl-dark">{booking.role === 'owner' ? booking.renterName : booking.ownerName}</span>
                     </span>
+                    {booking.fulfillment === 'shipping' && booking.shippingFee > 0 && (
+                        <span className="bg-rl-gray-4 px-3 py-1.5 rounded-lg">
+                            <span className="text-rl-gray text-xs">Shipping both ways </span>
+                            <span className="font-bold text-rl-dark">{currency(booking.shippingFee)}</span>
+                        </span>
+                    )}
                 </div>
+
+                {booking.fulfillment === 'shipping' && <ShippingPanel booking={booking} onChanged={onChanged} />}
 
                 {booking.actions.length > 0 && (
                     confirming ? (
                         <div className="flex flex-wrap items-center gap-2 mt-4">
-                            <span className="text-sm text-rl-dark">{ACTIONS[confirming].confirm}</span>
+                            <span className="text-sm text-rl-dark">{actionFor(booking, confirming).confirm}</span>
                             <button disabled={!!busy} onClick={() => run(confirming)} className="btn-primary text-xs py-1.5 px-3 disabled:opacity-60">
                                 {busy ? 'Saving…' : 'Yes'}
                             </button>
@@ -101,7 +208,7 @@ function BookingRow({ booking, onChanged }) {
                             {booking.actions.map(a => (
                                 <button key={a} disabled={!!busy} onClick={() => press(a)}
                                     className={`${ACTIONS[a].style} text-xs py-1.5 px-3 disabled:opacity-60`}>
-                                    {busy === a ? 'Saving…' : ACTIONS[a].label}
+                                    {busy === a ? 'Saving…' : actionFor(booking, a).label}
                                 </button>
                             ))}
                         </div>

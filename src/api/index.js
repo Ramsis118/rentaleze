@@ -195,6 +195,21 @@ class ApiClient {
     async cancelBooking(id) {
         return this.bookingAction(id, 'cancel')
     }
+
+    // Shipping (ShipStation)
+    async getShippingQuote(listingId, { zip, city, state } = {}) {
+        const query = new URLSearchParams({ listingId, zip: zip || '', city: city || '', state: state || '' }).toString()
+        return this.request(`/shipping/quote?${query}`)
+    }
+
+    async getBookingShipments(bookingId) {
+        return this.request(`/shipping/bookings/${bookingId}`)
+    }
+
+    // Owner: create (or retry) the send + return labels
+    async createShippingLabels(bookingId) {
+        return this.request(`/shipping/bookings/${bookingId}/labels`, { method: 'POST' })
+    }
 }
 
 export const api = new ApiClient()

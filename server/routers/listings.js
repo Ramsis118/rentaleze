@@ -6,6 +6,7 @@ import db, { demoListingsEnabled } from '../db/database.js'
 import { UPLOADS_DIR } from '../utils/paths.js'
 import { authenticate, optionalAuth } from '../middleware/auth.js'
 import { CATEGORIES } from '../../src/data/listings.js'
+import { validatePackage, validateAddress, publicPackage, listingShipFrom } from '../services/shipping.js'
 
 const router = Router()
 
@@ -71,6 +72,7 @@ export function toListing(row) {
         badges: parseJSON(row.badges, []),
         verified: isDemo ? !!row.verified : (row.u_verified || 0) > 0,
         shipping: !!row.shipping,
+        package: publicPackage(row),   // packed size + weight (no address)
         instantBook: !!row.instant_book,
         condition: row.item_condition || null,
         status: row.status,
@@ -140,6 +142,20 @@ function validateListing(body, { partial = false } = {}) {
         out.item_condition = body.condition || null
     }
     if (!partial || has('shipping')) out.shipping = body.shipping ? 1 : 0
+    if (!partial || has('package')) {
+        const pkg = validatePackage(body.package || {})
+        errors.push(...pkg.errors)
+        out.package = pkg.data   // null clears it
+    }
+    if (!partial || has('shipFrom')) {
+        if (body.shipFrom) {
+            const addr = validateAddress(body.shipFrom, 'Ship-from address')
+            errors.push(...addr.errors)
+            out.ship_from = addr.data ? JSON.stringify(addr.data) : null
+        } else {
+            out.ship_from = null
+        }
+    }
     if (!partial || has('instantBook')) out.instant_book = body.instantBook ? 1 : 0
     if (!partial || has('images')) {
         const images = Array.isArray(body.images) ? body.images : []
@@ -174,9 +190,18 @@ function publishErrors(merged) {
     if (merged.status === 'active') {
         if (!merged.images || merged.images.length === 0) errors.push('Add at least one photo before publishing')
         if (!merged.location) errors.push('Add a pickup location before publishing')
+        if (merged.shipping) {
+            if (!merged.hasPackage) errors.push('Add the packed size and weight so renters get an accurate shipping price')
+            if (!merged.hasShipFrom) errors.push('Add a ship-from address so shipping labels can be created')
+        }
     }
     return errors
 }
+
+const PACKAGE_COLS = ['ship_weight_oz', 'ship_length_in', 'ship_width_in', 'ship_height_in']
+
+// The owner also sees their private ship-from address
+const forOwner = (listing, row) => ({ ...listing, shipFrom: listingShipFrom(row) })
 
 // ─── Routes ─────────────────────────────────────────────────────────────────
 
@@ -262,7 +287,8 @@ router.get('/:id', optionalAuth, (req, res) => {
         if (!row || row.status === 'deleted' || (row.status !== 'active' && !isOwner) || (row.is_demo && !demoListingsEnabled)) {
             return res.status(404).json({ error: 'Listing not found' })
         }
-        res.json(withDetails(toListing(row), row))
+        const listing = withDetails(toListing(row), row)
+        res.json(isOwner ? forOwner(listing, row) : listing)
     } catch (error) {
         console.error('Get listing error:', error)
         res.status(500).json({ error: 'Failed to fetch listing' })
@@ -273,7 +299,7 @@ router.get('/:id', optionalAuth, (req, res) => {
 router.post('/', authenticate, (req, res) => {
     try {
         const { errors, data } = validateListing(req.body)
-        errors.push(...publishErrors(data))
+        errors.push(...publishErrors({ ...data, hasPackage: !!data.package, hasShipFrom: !!data.ship_from }))
         if (errors.length) return res.status(400).json({ error: errors[0], errors })
 
         const id = uuidv4()
@@ -283,11 +309,13 @@ router.post('/', authenticate, (req, res) => {
         db.transaction(() => {
             db.prepare(`
                 INSERT INTO listings (id, owner_id, title, description, category, price_per_day, location, image,
-                    owner_name, owner_avatar, badges, verified, shipping, instant_book, item_condition, status, is_demo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0)
+                    owner_name, owner_avatar, badges, verified, shipping, instant_book, item_condition, status, is_demo,
+                    ship_weight_oz, ship_length_in, ship_width_in, ship_height_in, ship_from)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
             `).run(id, req.user.id, data.title, data.description, data.category, data.price_per_day, data.location,
                 data.images[0] || null, `${req.user.first_name} ${req.user.last_name?.[0] || ''}.`, req.user.avatar || null,
-                JSON.stringify(badges), data.shipping, data.instant_book, data.item_condition, data.status)
+                JSON.stringify(badges), data.shipping, data.instant_book, data.item_condition, data.status,
+                ...PACKAGE_COLS.map(c => data.package?.[c] ?? null), data.ship_from)
 
             db.prepare(`
                 INSERT INTO listing_details (id, listing_id, images, includes, specs, rules, owner_since)
@@ -297,7 +325,7 @@ router.post('/', authenticate, (req, res) => {
         })()
 
         const row = db.prepare(`${BASE_SELECT} WHERE l.id = ?`).get(id)
-        res.status(201).json(withDetails(toListing(row), row))
+        res.status(201).json(forOwner(withDetails(toListing(row), row), row))
     } catch (error) {
         console.error('Create listing error:', error)
         res.status(500).json({ error: 'Failed to create listing' })
@@ -316,7 +344,10 @@ router.put('/:id', authenticate, (req, res) => {
         const merged = {
             status: data.status ?? existing.status,
             location: data.location ?? existing.location,
-            images: data.images ?? parseJSON(details.images, existing.image ? [existing.image] : [])
+            images: data.images ?? parseJSON(details.images, existing.image ? [existing.image] : []),
+            shipping: data.shipping ?? existing.shipping,
+            hasPackage: data.package !== undefined ? !!data.package : existing.ship_weight_oz != null,
+            hasShipFrom: data.ship_from !== undefined ? !!data.ship_from : !!existing.ship_from
         }
         errors.push(...publishErrors(merged))
         if (errors.length) return res.status(400).json({ error: errors[0], errors })
@@ -329,6 +360,10 @@ router.put('/:id', authenticate, (req, res) => {
         }
         if (data.instant_book !== undefined) { sets.push('badges = ?'); vals.push(JSON.stringify(data.instant_book ? ['Instant Book'] : [])) }
         if (data.images !== undefined) { sets.push('image = ?'); vals.push(data.images[0] || null) }
+        if (data.package !== undefined) {
+            for (const c of PACKAGE_COLS) { sets.push(`${c} = ?`); vals.push(data.package?.[c] ?? null) }
+        }
+        if (data.ship_from !== undefined) { sets.push('ship_from = ?'); vals.push(data.ship_from) }
 
         db.transaction(() => {
             if (sets.length) {
@@ -345,7 +380,7 @@ router.put('/:id', authenticate, (req, res) => {
         })()
 
         const row = db.prepare(`${BASE_SELECT} WHERE l.id = ?`).get(existing.id)
-        res.json(withDetails(toListing(row), row))
+        res.json(forOwner(withDetails(toListing(row), row), row))
     } catch (error) {
         console.error('Update listing error:', error)
         res.status(500).json({ error: 'Failed to update listing' })

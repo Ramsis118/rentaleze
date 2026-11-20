@@ -2,6 +2,9 @@ import { Router } from 'express'
 import { v4 as uuidv4 } from 'uuid'
 import db from '../db/database.js'
 import { authenticate } from '../middleware/auth.js'
+import {
+    quoteShipping, validateAddress, generateLabelsForBooking, voidLabelsForBooking, getShipments
+} from '../services/shipping.js'
 
 const router = Router()
 
@@ -13,9 +16,12 @@ const router = Router()
 //
 // Instant Book listings skip "requested" and start as "accepted".
 // Dates are YYYY-MM-DD. start = pickup day, end = return day; days = end - start.
+//
+// Shipped rentals: the renter pays a round-trip shipping price estimated from the
+// item's packed size. Once the booking is accepted, Rentaleze buys a send label and
+// a return label through ShipStation (services/shipping.js). Cancelling voids them.
 
 const RENTER_SERVICE_FEE = 0.12   // platform fee charged to the renter
-const SHIPPING_FEE = 24
 const MAX_DAYS = 90
 const BLOCKING = ['accepted', 'active']   // statuses that hold the item's calendar
 
@@ -72,8 +78,10 @@ function toBooking(row, viewerId) {
         baseTotal: row.base_total,
         serviceFee: row.service_fee,
         shippingFee: row.shipping_fee,
+        shippingEstimated: !!row.shipping_estimated,
         total: row.total,
         fulfillment: row.fulfillment,
+        shipments: row.fulfillment === 'shipping' ? getShipments(row.id, role) : [],
         status: row.status === 'pending' ? 'requested' : row.status,
         intendedUse: row.intended_use,
         ownerNote: row.owner_note || null,
@@ -107,9 +115,9 @@ const getBookingRow = (id) => db.prepare(`${BOOKING_SELECT} WHERE b.id = ?`).get
 // ─── Routes ─────────────────────────────────────────────────────────────────
 
 // Create a booking request (or an instant booking)
-router.post('/', authenticate, (req, res) => {
+router.post('/', authenticate, async (req, res) => {
     try {
-        const { listingId, startDate, endDate, qty, fulfillment, intendedUse, shippingAddress, shippingCity, shippingState, shippingZip } = req.body || {}
+        const { listingId, startDate, endDate, qty, fulfillment, intendedUse, shippingName, shippingPhone, shippingAddress, shippingCity, shippingState, shippingZip } = req.body || {}
         if (!listingId) return res.status(400).json({ error: 'Missing listing.' })
 
         const userStatus = db.prepare('SELECT is_verified, phone_verified FROM users WHERE id = ?').get(req.user.id)
@@ -135,21 +143,49 @@ router.post('/', authenticate, (req, res) => {
         if (open) return res.status(409).json({ error: 'You already have a request for these dates.' })
 
         const quantity = Math.min(Math.max(parseInt(qty, 10) || 1, 1), 20)
-        const ship = fulfillment === 'shipping' && listing.shipping ? 'shipping' : 'pickup'
+        if (fulfillment === 'shipping' && !listing.shipping) return res.status(400).json({ error: 'This item is pickup only.' })
+        const ship = fulfillment === 'shipping' ? 'shipping' : 'pickup'
+
+        // Shipped rentals need a full delivery address (also used as the return label's sender)
+        let shipTo = null
+        let quote = { fee: 0, estimated: false }
+        if (ship === 'shipping') {
+            const renter = db.prepare('SELECT first_name, last_name, phone FROM users WHERE id = ?').get(req.user.id)
+            const addr = validateAddress({
+                name: shippingName || `${renter.first_name} ${renter.last_name}`,
+                phone: shippingPhone || renter.phone,
+                line1: shippingAddress, city: shippingCity, state: shippingState, zip: shippingZip
+            }, 'Delivery address')
+            if (addr.errors.length) return res.status(400).json({ error: addr.errors[0], errors: addr.errors })
+            shipTo = addr.data
+            quote = await quoteShipping(listing, shipTo)
+        }
+
         const baseTotal = money(days * listing.price_per_day * quantity)
         const serviceFee = money(baseTotal * RENTER_SERVICE_FEE)
-        const shippingFee = ship === 'shipping' ? SHIPPING_FEE : 0
+        const shippingFee = money(quote.fee)
         const total = money(baseTotal + serviceFee + shippingFee)
         const status = listing.instant_book ? 'accepted' : 'requested'
+
+        // Dates may have been taken while the shipping quote was loading
+        if (hasConflict(listing.id, startDate, endDate)) {
+            return res.status(409).json({ error: 'Those dates are already booked. Please choose different dates.' })
+        }
 
         const bookingId = uuidv4()
         db.prepare(`
             INSERT INTO bookings (id, listing_id, user_id, start_date, end_date, days, qty, fulfillment, base_total, insurance,
-                service_fee, shipping_fee, total, status, intended_use, shipping_address, shipping_city, shipping_state, shipping_zip, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                service_fee, shipping_fee, total, status, intended_use, shipping_name, shipping_phone, shipping_address,
+                shipping_city, shipping_state, shipping_zip, shipping_estimated, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `).run(bookingId, listing.id, req.user.id, startDate, endDate, days, quantity, ship, baseTotal, serviceFee, shippingFee,
-            total, status, String(intendedUse || '').slice(0, 500), String(shippingAddress || '').slice(0, 200),
-            String(shippingCity || '').slice(0, 80), String(shippingState || '').slice(0, 40), String(shippingZip || '').slice(0, 10))
+            total, status, String(intendedUse || '').slice(0, 500), shipTo?.name || null, shipTo?.phone || null,
+            shipTo?.line1 || '', shipTo?.city || '', shipTo?.state || '', shipTo?.zip || '', quote.estimated ? 1 : 0)
+
+        // Instant Book + shipping: buy the send and return labels right away
+        if (ship === 'shipping' && status === 'accepted') {
+            await generateLabelsForBooking(bookingId).catch(err => console.error('Label generation error:', err))
+        }
 
         res.status(201).json(toBooking(getBookingRow(bookingId), req.user.id))
     } catch (error) {
@@ -203,7 +239,7 @@ const TRANSITIONS = {
     return: 'completed'
 }
 
-router.put('/:id/:action', authenticate, (req, res) => {
+router.put('/:id/:action', authenticate, async (req, res) => {
     try {
         const { action } = req.params
         if (!TRANSITIONS[action]) return res.status(404).json({ error: 'Not found' })
@@ -228,6 +264,15 @@ router.put('/:id/:action', authenticate, (req, res) => {
             WHERE id = ? AND status = ?
         `).run(TRANSITIONS[action], cancelledBy, note, row.id, row.status)
         if (result.changes === 0) return res.status(409).json({ error: 'This booking was just updated. Please refresh.' })
+
+        // Shipping labels follow the booking: buy on accept, void on cancel/decline
+        if (row.fulfillment === 'shipping') {
+            if (action === 'accept') {
+                await generateLabelsForBooking(row.id).catch(err => console.error('Label generation error:', err))
+            } else if (action === 'cancel' || action === 'decline') {
+                await voidLabelsForBooking(row.id).catch(err => console.error('Label void error:', err))
+            }
+        }
 
         res.json(toBooking(getBookingRow(row.id), req.user.id))
     } catch (error) {
