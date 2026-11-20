@@ -228,6 +228,9 @@ const TRACK_URLS = {
     fedex: 'https://www.fedex.com/fedextrack/?trknbr=',
     dhl_express: 'https://www.dhl.com/us-en/home/tracking.html?tracking-id='
 }
+// Carrier codes can carry account suffixes (e.g. fedex_walleted, ups_walleted)
+const trackUrlFor = (carrier) => TRACK_URLS[carrier] ||
+    Object.entries(TRACK_URLS).find(([code]) => String(carrier || '').startsWith(`${code}_`))?.[1] || null
 const TRACK_LABELS = { AC: 'Accepted by carrier', IT: 'In transit', DE: 'Delivered', EX: 'Delivery problem', AT: 'Delivery attempted', NY: 'Not yet in system', UN: 'Label created' }
 
 // Apply a tracking event (from the ShipStation webhook or a poll)
@@ -276,7 +279,7 @@ export function getShipments(bookingId, role = 'owner') {
             carrier: s.carrier_code,
             service: s.service_code,
             trackingNumber: s.tracking_number,
-            trackingUrl: s.tracking_number && s.mode === 'live' && TRACK_URLS[s.carrier_code] ? TRACK_URLS[s.carrier_code] + encodeURIComponent(s.tracking_number) : null,
+            trackingUrl: s.tracking_number && s.mode === 'live' && trackUrlFor(s.carrier_code) ? trackUrlFor(s.carrier_code) + encodeURIComponent(s.tracking_number) : null,
             trackingStatus: s.tracking_status || null,
             trackingDescription: s.tracking_description || (s.status === 'created' ? TRACK_LABELS.UN : null),
             // The owner prints both labels; the renter only needs the return label
