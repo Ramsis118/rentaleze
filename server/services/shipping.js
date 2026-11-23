@@ -2,6 +2,7 @@
 // send + return labels bought through ShipStation once a shipped rental is confirmed.
 import { v4 as uuidv4 } from 'uuid'
 import db from '../db/database.js'
+import { shippingEvent } from './notify.js'
 import {
     shipstationMode, estimateRate, createOutboundLabel, createReturnLabel, voidLabel, trackLabel
 } from './shipstation.js'
@@ -145,6 +146,8 @@ const activeLabel = (bookingId, direction) =>
 const recordError = (bookingId, direction, message) => {
     clearErrors(bookingId, direction)
     insertShipment(bookingId, direction, { status: 'error', mode: shipstationMode(), error: String(message).slice(0, 500) })
+    // Tell the owner once per distinct problem (retries with the same error stay quiet)
+    shippingEvent(bookingId, 'label_failed', { error: String(message).slice(0, 300), key: `${direction}:${String(message).slice(0, 60)}` })
 }
 
 const inflight = new Map()
@@ -201,6 +204,7 @@ async function buyLabels(bookingId) {
             recordError(b.id, 'return', err.message)
         }
     }
+    if (activeLabel(b.id, 'outbound') && activeLabel(b.id, 'return')) shippingEvent(b.id, 'labels_ready')
     return getShipments(b.id)
 }
 
@@ -242,8 +246,12 @@ export function applyTrackingUpdate({ trackingNumber, statusCode, description })
             .run(statusCode || s.tracking_status, String(description || TRACK_LABELS[statusCode] || '').slice(0, 200), s.id)
         // Item reached the renter → rental is in progress
         if (s.direction === 'outbound' && statusCode === 'DE') {
-            db.prepare(`UPDATE bookings SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'accepted'`).run(s.booking_id)
+            db.prepare(`UPDATE bookings SET status = 'active', picked_up_at = COALESCE(picked_up_at, CURRENT_TIMESTAMP),
+                updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'accepted'`).run(s.booking_id)
+            shippingEvent(s.booking_id, 'outbound_delivered')
         }
+        if (s.direction === 'return' && ['AC', 'IT'].includes(statusCode)) shippingEvent(s.booking_id, 'return_in_transit')
+        if (s.direction === 'return' && statusCode === 'DE') shippingEvent(s.booking_id, 'return_delivered')
     }
     return rows.length
 }

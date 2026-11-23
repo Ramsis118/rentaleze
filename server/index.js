@@ -18,6 +18,10 @@ import verificationRoutes, { identityWebhook } from './routers/verification.js'
 import bookingTrustRoutes from './routers/bookingTrust.js'
 import adminRoutes from './routers/admin.js'
 import shippingRoutes from './routers/shipping.js'
+import notificationsRoutes from './routers/notifications.js'
+import supportRoutes from './routers/support.js'
+import helpdeskRoutes from './routers/helpdesk.js'
+import { startScheduler } from './services/notify.js'
 import { siteRouting } from './middleware/siteRouting.js'
 import { UPLOADS_DIR } from './utils/paths.js'
 
@@ -73,6 +77,9 @@ app.use('/api/waitlist', waitlistRoutes)
 app.use('/api/verification', verificationRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/shipping', shippingRoutes)
+app.use('/api/notifications', notificationsRoutes)
+app.use('/api/support', supportRoutes)
+app.use('/api/helpdesk', helpdeskRoutes)
 
 // Serve avatars and listing photos publicly. Rental check-in photos are private
 // (signed links via /api/bookings/:id/photos/...), and ID photos are never stored.
@@ -106,6 +113,7 @@ app.use((err, req, res, next) => {
 // Initialize database and start server
 initDatabase()
 seedDatabase()
+startScheduler()   // reminders: pickup tomorrow, time to ship, return due/overdue, finish verification
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`)

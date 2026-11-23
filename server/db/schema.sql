@@ -190,3 +190,79 @@ CREATE TABLE IF NOT EXISTS shipments (
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (booking_id) REFERENCES bookings(id)
 );
+
+-- ─── Notifications ─────────────────────────────────────────────────────────
+-- One row per in-app notification. dedupe_key stops scheduled reminders repeating.
+CREATE TABLE IF NOT EXISTS notifications (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT,
+  link TEXT,
+  dedupe_key TEXT,
+  read_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_dedupe ON notifications(user_id, dedupe_key) WHERE dedupe_key IS NOT NULL;
+
+-- Every email / text we try to send, so support can see what reached a customer
+CREATE TABLE IF NOT EXISTS notification_deliveries (
+  id TEXT PRIMARY KEY,
+  notification_id TEXT,
+  user_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  channel TEXT NOT NULL,            -- email | sms
+  destination TEXT,                 -- masked address / number
+  status TEXT NOT NULL,             -- sent | dev | failed | skipped
+  provider_id TEXT,
+  error TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_deliveries_user ON notification_deliveries(user_id, created_at);
+
+-- Password reset links (token stored hashed, single use, 1 hour)
+CREATE TABLE IF NOT EXISTS password_resets (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  token_hash TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token_hash);
+
+-- ─── Help desk ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id TEXT PRIMARY KEY,
+  number INTEGER NOT NULL UNIQUE,   -- friendly ticket number (#1001)
+  user_id TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  category TEXT NOT NULL,           -- booking | shipping | payment | account | listing | damage | other
+  status TEXT NOT NULL DEFAULT 'open',        -- open | pending (waiting on customer) | solved | closed
+  priority TEXT NOT NULL DEFAULT 'normal',    -- low | normal | high | urgent
+  assignee_id TEXT,
+  booking_id TEXT,
+  first_response_at TEXT,
+  last_customer_at TEXT,
+  last_staff_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON support_tickets(status, priority, updated_at);
+CREATE INDEX IF NOT EXISTS idx_tickets_user ON support_tickets(user_id);
+
+CREATE TABLE IF NOT EXISTS ticket_messages (
+  id TEXT PRIMARY KEY,
+  ticket_id TEXT NOT NULL,
+  author_id TEXT NOT NULL,
+  author_role TEXT NOT NULL,        -- customer | staff | system
+  body TEXT NOT NULL,
+  internal INTEGER DEFAULT 0,       -- staff-only note
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ticket_id) REFERENCES support_tickets(id)
+);
+CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket ON ticket_messages(ticket_id, created_at);

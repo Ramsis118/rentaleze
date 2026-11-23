@@ -6,6 +6,7 @@ import db from '../db/database.js'
 import { requireAdmin } from '../middleware/auth.js'
 import { claimWithEvents, addClaimEvent, listPhotos, trustSummary } from './bookingTrust.js'
 import { identityStripe } from '../services/identity.js'
+import { safeNotify } from '../services/notify.js'
 
 const router = Router()
 router.use(requireAdmin)
@@ -146,6 +147,7 @@ router.put('/users/:id/suspend', (req, res) => {
         }
     })()
     audit(req, suspended ? 'user_suspend' : 'user_reinstate', 'user', u.id, { reason })
+    safeNotify(u.id, suspended ? 'account_suspended' : 'account_reinstated', { reason })
     res.json({ ok: true })
 })
 

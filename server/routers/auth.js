@@ -1,10 +1,12 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
-import { createHash } from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 import { v4 as uuidv4 } from 'uuid'
 import rateLimit from 'express-rate-limit'
-import db, { adminEmails } from '../db/database.js'
+import db, { adminEmails, syncAdmins } from '../db/database.js'
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, verifyAccessToken } from '../utils/jwt.js'
+import { isAdmin, isSupport } from '../middleware/auth.js'
+import { safeNotify } from '../services/notify.js'
 
 const router = Router()
 
@@ -34,6 +36,7 @@ export function publicUser(u) {
         phoneVerified: u.phone_verified || 0,
         idStatus: u.is_verified === 1 ? 'verified' : (u.id_status || 'none'),
         isAdmin: u.role === 'admin' || adminEmails().includes(String(u.email || '').toLowerCase()),
+        isStaff: isAdmin(u) || isSupport(u),   // customer service (help desk) access
         suspended: !!u.suspended,
         createdAt: u.created_at,
         first_name: u.first_name,
@@ -83,7 +86,9 @@ router.post('/signup', authLimiter, async (req, res) => {
             VALUES (?, ?, ?, ?, ?, ?)
         `).run(userId, email, passwordHash, String(firstName).trim().slice(0, 60), String(lastName).trim().slice(0, 60), role)
 
+        syncAdmins()   // someone listed in ADMIN_EMAILS / SUPPORT_EMAILS gets their staff role right away
         const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId)
+        safeNotify(user.id, 'welcome')
         res.status(201).json({ message: 'Account created successfully', user: publicUser(user), ...issueTokens(user) })
     } catch (error) {
         console.error('Signup error:', error)
@@ -152,6 +157,58 @@ router.get('/me', (req, res) => {
     } catch (error) {
         console.error('Get current user error:', error)
         res.status(500).json({ error: 'Failed to load account' })
+    }
+})
+
+// ─── Password reset ─────────────────────────────────────────────────────────
+const RESET_MINUTES = 60
+// Reset emails: 5 per 15 min per IP. Setting the new password: 10 tries (the token itself is 256-bit random).
+const resetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false })
+const resetSubmitLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false })
+
+// Create a single-use reset link and email it. Also used by the help desk ("send reset link").
+export function sendPasswordReset(userId) {
+    const token = randomBytes(32).toString('hex')
+    db.prepare(`UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL`).run(userId)
+    db.prepare('INSERT INTO password_resets (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)')
+        .run(uuidv4(), userId, hashToken(token), new Date(Date.now() + RESET_MINUTES * 60000).toISOString())
+    safeNotify(userId, 'password_reset', { token })
+    return token
+}
+
+// Always the same answer, so this can't be used to find out who has an account
+router.post('/forgot-password', resetLimiter, (req, res) => {
+    try {
+        const email = String(req.body?.email || '').trim().toLowerCase()
+        const user = email && db.prepare('SELECT id, is_demo FROM users WHERE lower(email) = ?').get(email)
+        if (user && !user.is_demo) sendPasswordReset(user.id)
+        res.json({ message: 'If that email has an account, a reset link is on its way.' })
+    } catch (error) {
+        console.error('Forgot password error:', error)
+        res.status(500).json({ error: 'Could not send the reset email' })
+    }
+})
+
+router.post('/reset-password', resetSubmitLimiter, async (req, res) => {
+    try {
+        const token = String(req.body?.token || '')
+        const password = String(req.body?.password || '')
+        if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' })
+        const reset = token && db.prepare('SELECT * FROM password_resets WHERE token_hash = ?').get(hashToken(token))
+        if (!reset || reset.used_at || reset.expires_at < new Date().toISOString()) {
+            return res.status(400).json({ error: 'This reset link has expired or was already used. Request a new one.' })
+        }
+        const hash = await bcrypt.hash(password, 12)
+        db.transaction(() => {
+            db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(hash, reset.user_id)
+            db.prepare('UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE id = ?').run(reset.id)
+            db.prepare('DELETE FROM sessions WHERE user_id = ?').run(reset.user_id)   // sign out everywhere
+        })()
+        safeNotify(reset.user_id, 'password_changed')
+        res.json({ message: 'Password updated. You can sign in now.' })
+    } catch (error) {
+        console.error('Reset password error:', error)
+        res.status(500).json({ error: 'Could not reset the password' })
     }
 })
 

@@ -67,3 +67,17 @@ services:
       # Signs the private links to rental condition photos
       - key: FILE_URL_SECRET
         generateValue: true
+      # ── Notifications (see docs/NOTIFICATIONS_AND_HELPDESK.md) ──
+      # Resend API key; verify rentaleze.com in Resend first
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: Rentaleze <notifications@rentaleze.com>
+      - key: APP_URL
+        value: https://beta.rentaleze.com
+      # Twilio Messaging Service for notification texts (same account as TWILIO_ACCOUNT_SID)
+      - key: TWILIO_MESSAGING_SERVICE_SID
+        sync: false
+      # Optional: comma-separated support agent emails (agents can also be added in the help desk)
+      - key: SUPPORT_EMAILS
+        sync: false

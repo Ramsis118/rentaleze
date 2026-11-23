@@ -3,6 +3,7 @@
 // keep only the result (verified / failed) and the session id.
 import Stripe from 'stripe'
 import db from '../db/database.js'
+import { safeNotify } from './notify.js'
 
 let client = null
 export function identityStripe() {
@@ -64,11 +65,13 @@ export function applyIdentitySession(session) {
     if (session.status === 'verified') {
         db.prepare(`UPDATE users SET id_status = 'verified', is_verified = 1, id_verified_at = CURRENT_TIMESTAMP,
             id_last_error = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(userId)
+        safeNotify(userId, 'id_verified', {}, { dedupeKey: `id_verified:${session.id}` })
     } else if (session.status === 'requires_input') {
         // requires_input with no error just means the person hasn't finished yet
         if (session.last_error) {
             db.prepare(`UPDATE users SET id_status = 'failed', is_verified = 0, id_last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
                 .run(friendlyError(session.last_error), userId)
+            safeNotify(userId, 'id_failed', { reason: friendlyError(session.last_error) }, { dedupeKey: `id_failed:${session.id}` })
         }
     } else if (session.status === 'processing') {
         db.prepare(`UPDATE users SET id_status = 'pending', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(userId)

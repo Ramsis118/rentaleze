@@ -234,6 +234,31 @@ class ApiClient {
     // Public profiles
     getPublicProfile(userId) { return this.request(`/users/${userId}/public`) }
 
+    // Password reset
+    forgotPassword(email) { return this.request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }) }
+    resetPassword(token, password) { return this.request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }) }
+
+    // Notifications
+    getNotifications(limit = 30) { return this.request(`/notifications?limit=${limit}`) }
+    getUnreadCount() { return this.request('/notifications/unread-count') }
+    markNotificationRead(id) { return this.request(`/notifications/${id}/read`, { method: 'POST' }) }
+    markAllNotificationsRead() { return this.request('/notifications/read-all', { method: 'POST' }) }
+    getNotificationPrefs() { return this.request('/notifications/preferences') }
+    setNotificationPrefs(prefs) { return this.request('/notifications/preferences', { method: 'PUT', body: JSON.stringify(prefs) }) }
+
+    // Support tickets (customer)
+    getMyTickets() { return this.request('/support/tickets') }
+    getMyTicket(id) { return this.request(`/support/tickets/${id}`) }
+    createTicket(data) { return this.request('/support/tickets', { method: 'POST', body: JSON.stringify(data) }) }
+    replyToTicket(id, body) { return this.request(`/support/tickets/${id}/messages`, { method: 'POST', body: JSON.stringify({ body }) }) }
+    solveTicket(id) { return this.request(`/support/tickets/${id}/solve`, { method: 'POST' }) }
+
+    // Help desk (staff)
+    helpdesk(path, options = {}) {
+        const { method = 'GET', body } = options
+        return this.request(`/helpdesk${path}`, { method, ...(body ? { body: JSON.stringify(body) } : {}) })
+    }
+
     // Admin
     admin(path, options = {}) {
         const { method = 'GET', body } = options

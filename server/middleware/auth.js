@@ -1,5 +1,5 @@
 import { verifyAccessToken } from '../utils/jwt.js'
-import db, { adminEmails } from '../db/database.js'
+import db, { adminEmails, supportEmails } from '../db/database.js'
 
 const USER_FIELDS = 'id, email, first_name, last_name, avatar, role, is_verified, phone_verified, id_status, suspended'
 
@@ -16,11 +16,18 @@ function loadUser(req) {
 export const isAdmin = (user) =>
     !!user && (user.role === 'admin' || adminEmails().includes(String(user.email || '').toLowerCase()))
 
+// Customer service workers: role 'support' (granted by an admin) or listed in SUPPORT_EMAILS. Admins count too.
+export const isSupport = (user) =>
+    !!user && (user.role === 'support' || supportEmails().includes(String(user.email || '').toLowerCase()))
+export const isStaff = (user) => isAdmin(user) || isSupport(user)
+
 export function authenticate(req, res, next) {
     const { user, error } = loadUser(req)
     if (error) return res.status(401).json({ error })
-    // Suspended accounts can still sign in and read, but can't change anything
-    if (user.suspended && req.method !== 'GET' && !isAdmin(user)) {
+    // Suspended accounts can still sign in and read, but can't change anything —
+    // except contacting support and marking notifications read
+    const allowed = /^\/api\/(support|notifications)(\/|$)/.test(req.originalUrl || '')
+    if (user.suspended && req.method !== 'GET' && !isAdmin(user) && !allowed) {
         return res.status(403).json({ error: 'Your account is suspended. Contact support@rentaleze.com.' })
     }
     req.user = user
@@ -36,6 +43,13 @@ export function optionalAuth(req, res, next) {
 export function requireAdmin(req, res, next) {
     authenticate(req, res, () => {
         if (!isAdmin(req.user)) return res.status(403).json({ error: 'Admins only' })
+        next()
+    })
+}
+
+export function requireStaff(req, res, next) {
+    authenticate(req, res, () => {
+        if (!isStaff(req.user)) return res.status(403).json({ error: 'Support staff only' })
         next()
     })
 }

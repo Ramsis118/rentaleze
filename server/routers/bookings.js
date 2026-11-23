@@ -5,6 +5,7 @@ import { authenticate } from '../middleware/auth.js'
 import {
     quoteShipping, validateAddress, generateLabelsForBooking, voidLabelsForBooking, getShipments
 } from '../services/shipping.js'
+import { bookingEvent } from '../services/notify.js'
 
 const router = Router()
 
@@ -194,6 +195,7 @@ router.post('/', authenticate, async (req, res) => {
             await generateLabelsForBooking(bookingId).catch(err => console.error('Label generation error:', err))
         }
 
+        bookingEvent(bookingId, 'created', { actorId: req.user.id })
         res.status(201).json(toBooking(getBookingRow(bookingId), req.user.id))
     } catch (error) {
         console.error('Create booking error:', error)
@@ -283,6 +285,7 @@ router.put('/:id/:action', authenticate, async (req, res) => {
             }
         }
 
+        bookingEvent(row.id, action, { actorId: req.user.id, reason: note })
         res.json(toBooking(getBookingRow(row.id), req.user.id))
     } catch (error) {
         console.error('Booking action error:', error)

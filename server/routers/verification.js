@@ -7,6 +7,7 @@ import {
     applyIdentitySession, refreshIdentityStatus
 } from '../services/identity.js'
 import { smsConfigured, smsDevMode, toE164, sendCode, checkCode, DEV_CODE } from '../services/sms.js'
+import { safeNotify } from '../services/notify.js'
 
 const router = Router()
 
@@ -72,6 +73,7 @@ router.post('/identity/dev-complete', authenticate, (req, res) => {
     if (!identityDevMode()) return res.status(404).json({ error: 'Not found' })
     db.prepare(`UPDATE users SET id_status = 'verified', is_verified = 1, id_verified_at = CURRENT_TIMESTAMP, id_last_error = NULL WHERE id = ?`)
         .run(req.user.id)
+    safeNotify(req.user.id, 'id_verified', {}, { dedupeKey: 'id_verified:dev' })
     res.json(statusFor(req.user.id))
 })
 

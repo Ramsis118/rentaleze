@@ -21,6 +21,10 @@ import ListingFormPage from './pages/Dashboard/ListingFormPage'
 import BookingDetailPage from './pages/Dashboard/BookingDetailPage'
 import PublicProfilePage from './pages/PublicProfilePage'
 import AdminPage from './pages/Admin/AdminPage'
+import HelpDeskPage from './pages/HelpDesk/HelpDeskPage'
+import NotificationsPage from './pages/Dashboard/NotificationsPage'
+import SupportPage from './pages/Dashboard/SupportPage'
+import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages'
 import { useCart } from './context/CartContext'
 import { AuthProvider } from './context/AuthContext'
 
@@ -62,9 +66,15 @@ function AppContent() {
             <Route path="bookings/:id" element={<BookingDetailPage />} />
             <Route path="saved" element={<SavedListingsPage />} />
             <Route path="payments" element={<PaymentsPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="support" element={<SupportPage />} />
+            <Route path="support/:id" element={<SupportPage />} />
           </Route>
           <Route path="/u/:id" element={<PublicProfilePage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/helpdesk" element={<HelpDeskPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

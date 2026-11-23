@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import NotificationBell from './NotificationBell'
 
 const SearchIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +117,9 @@ export default function Navbar() {
                 </Link>
               </>
             ) : (
-              <div className="relative ml-2">
+              <>
+              <NotificationBell />
+              <div className="relative ml-1">
                 <button 
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-2 hover:bg-rl-gray-4 p-1 rounded-xl transition-colors"
@@ -137,14 +140,18 @@ export default function Navbar() {
                       <Link to="/dashboard/listings" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">My Listings</Link>
                     <Link to="/dashboard/bookings" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">My Bookings</Link>
                       <Link to="/dashboard/saved" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">Saved Items</Link>
+                      <Link to="/dashboard/support" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm text-rl-dark hover:bg-rl-gray-4">Help & Support</Link>
+                      {user.isStaff && <Link to="/helpdesk" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm font-semibold text-rl-blue-600 hover:bg-rl-gray-4">Help Desk</Link>}
                       {user.isAdmin && <Link to="/admin" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-sm font-semibold text-rl-blue-600 hover:bg-rl-gray-4">Admin</Link>}
                   </div>
                 )}
               </div>
+              </>
             )}
           </nav>
 
-          {/* Mobile menu toggle */}
+          {/* Mobile: bell + menu toggle */}
+          {user && <div className="md:hidden ml-auto"><NotificationBell /></div>}
           <button
             className="md:hidden p-2 rounded-lg text-rl-dark-3 hover:bg-rl-gray-4"
             onClick={() => setMobileOpen(!mobileOpen)}

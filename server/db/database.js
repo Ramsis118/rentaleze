@@ -69,7 +69,10 @@ function upgradeDatabase() {
         ['bookings', 'picked_up_at', 'TEXT'],
         ['bookings', 'returned_at', 'TEXT'],
         // Admin moderation
-        ['listings', 'moderation_note', 'TEXT']
+        ['listings', 'moderation_note', 'TEXT'],
+        // Notification preferences (account/security emails are always sent)
+        ['users', 'notify_email', 'INTEGER DEFAULT 1'],
+        ['users', 'notify_sms', 'INTEGER DEFAULT 1']
     ]
 
     for (const [table, name, type] of columns) {
@@ -166,11 +169,16 @@ function upgradeTrustTables() {
 export const adminEmails = () => (process.env.ADMIN_EMAILS || '')
     .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
 
+// Emails listed in SUPPORT_EMAILS get the help desk (role 'support'). Admins can also grant it in the help desk.
+export const supportEmails = () => (process.env.SUPPORT_EMAILS || '')
+    .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+
 export function syncAdmins() {
     const emails = adminEmails()
-    if (!emails.length) return
     const stmt = db.prepare(`UPDATE users SET role = 'admin' WHERE lower(email) = ? AND role != 'admin'`)
     for (const e of emails) stmt.run(e)
+    const support = db.prepare(`UPDATE users SET role = 'support' WHERE lower(email) = ? AND role NOT IN ('admin', 'support')`)
+    for (const e of supportEmails()) support.run(e)
 }
 
 // Seed demo listings (development only)
